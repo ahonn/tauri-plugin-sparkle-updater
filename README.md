@@ -73,25 +73,25 @@ Add to `src-tauri/tauri.conf.json`:
 | `automaticallyDownloadsUpdates` | boolean | `false` | Auto-download updates when found |
 | `updateCheckInterval` | number | `86400` | Check interval in seconds (default: 1 day) |
 
-### Info.plist Configuration (Required)
+### Info.plist (Auto-generated)
 
-Sparkle reads the EdDSA public key directly from Info.plist. Add to your bundle configuration:
+The plugin automatically generates `Info.plist` with Sparkle keys (`SUFeedURL`, `SUPublicEDKey`) from your plugin configuration during build. The file is created in your `src-tauri` directory and merged into the final app bundle by Tauri.
+
+If you have an existing `Info.plist`, the Sparkle keys will be merged into it, preserving your other settings.
+
+### Bundle Configuration
+
+Make sure to include the Sparkle framework in your bundle:
 
 ```json
 {
   "bundle": {
     "macOS": {
-      "frameworks": ["path/to/Sparkle.framework"],
-      "infoPlist": {
-        "SUPublicEDKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
-        "SUFeedURL": "https://example.com/appcast.xml"
-      }
+      "frameworks": ["path/to/Sparkle.framework"]
     }
   }
 }
 ```
-
-> **Important**: The `SUPublicEDKey` in Info.plist is required for Sparkle to verify update signatures.
 
 ## Usage
 

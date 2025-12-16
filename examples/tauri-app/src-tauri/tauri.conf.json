@@ -1,7 +1,7 @@
 {
   "productName": "tauri-app",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.example.sparkle-updater-demo",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
@@ -43,11 +43,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "frameworks": ["../../../Sparkle.framework"],
-      "infoPlist": {
-        "SUPublicEDKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
-        "SUFeedURL": "https://example.com/appcast.xml"
-      }
+      "frameworks": ["../../../Sparkle.framework"]
     }
   }
 }

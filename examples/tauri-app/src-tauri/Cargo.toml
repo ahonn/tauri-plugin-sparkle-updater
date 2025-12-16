@@ -15,9 +15,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.5.3", default-features = false }
+tauri-build = { version = "2.5.3", default-features = false , features = [] }
 
 [dependencies]
-tauri = { version = "2.9.5" }
+tauri = { version = "2.9.5", features = [] }
 tauri-plugin-sparkle-updater = { path = "../../../" }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
