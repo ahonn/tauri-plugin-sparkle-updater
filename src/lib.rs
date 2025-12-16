@@ -35,10 +35,13 @@ impl<R: Runtime, T: Manager<R>> crate::SparkleUpdaterExt<R> for T {
 }
 
 /// Initializes the plugin.
-pub fn init<R: Runtime>() -> TauriPlugin<R> {
-  Builder::new("sparkle-updater")
+pub fn init<R: Runtime>() -> TauriPlugin<R, Config> {
+  Builder::<R, Config>::new("sparkle-updater")
     .invoke_handler(tauri::generate_handler![commands::ping])
     .setup(|app, api| {
+      let config = api.config().clone();
+      config.validate()?;
+
       #[cfg(mobile)]
       let sparkle_updater = mobile::init(app, api)?;
       #[cfg(desktop)]

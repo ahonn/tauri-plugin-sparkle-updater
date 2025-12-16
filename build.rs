@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 const COMMANDS: &[&str] = &[
     "ping",
@@ -17,8 +16,6 @@ const COMMANDS: &[&str] = &[
     "reset_update_cycle",
 ];
 
-const SPARKLE_VERSION: &str = "2.8.1";
-
 fn main() {
     tauri_plugin::Builder::new(COMMANDS)
         .android_path("android")
@@ -31,7 +28,23 @@ fn main() {
         let framework_path = Path::new(&manifest_dir).join("Sparkle.framework");
 
         if !framework_path.exists() {
-            download_sparkle(&manifest_dir);
+            panic!(
+                "\n\
+                ╔══════════════════════════════════════════════════════════════╗\n\
+                ║  Sparkle.framework not found!                                ║\n\
+                ╠══════════════════════════════════════════════════════════════╣\n\
+                ║  Please download Sparkle and place it in the project root:   ║\n\
+                ║                                                              ║\n\
+                ║  ./scripts/download-sparkle.sh                               ║\n\
+                ║                                                              ║\n\
+                ║  Or manually:                                                ║\n\
+                ║  curl -L -o sparkle.tar.xz \\                                 ║\n\
+                ║    https://github.com/sparkle-project/Sparkle/releases/\\     ║\n\
+                ║    download/2.8.1/Sparkle-2.8.1.tar.xz                       ║\n\
+                ║  tar -xf sparkle.tar.xz Sparkle.framework                    ║\n\
+                ║  rm sparkle.tar.xz                                           ║\n\
+                ╚══════════════════════════════════════════════════════════════╝\n"
+            );
         }
 
         println!("cargo:rustc-link-search=framework={}", manifest_dir);
@@ -40,61 +53,4 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rerun-if-changed=Sparkle.framework");
     }
-}
-
-fn download_sparkle(manifest_dir: &str) {
-    println!("cargo:warning=Sparkle.framework not found, downloading...");
-
-    let url = format!(
-        "https://github.com/sparkle-project/Sparkle/releases/download/{}/Sparkle-{}.tar.xz",
-        SPARKLE_VERSION, SPARKLE_VERSION
-    );
-
-    let temp_dir = std::env::temp_dir().join("sparkle_download");
-    let archive_path = temp_dir.join("sparkle.tar.xz");
-
-    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp directory");
-
-    let status = Command::new("curl")
-        .args(["-L", "-o", archive_path.to_str().unwrap(), &url])
-        .status()
-        .expect("Failed to execute curl");
-
-    if !status.success() {
-        panic!("Failed to download Sparkle framework");
-    }
-
-    let status = Command::new("tar")
-        .args([
-            "-xf",
-            archive_path.to_str().unwrap(),
-            "-C",
-            temp_dir.to_str().unwrap(),
-        ])
-        .status()
-        .expect("Failed to execute tar");
-
-    if !status.success() {
-        panic!("Failed to extract Sparkle framework");
-    }
-
-    let src = temp_dir.join("Sparkle.framework");
-    let dst = Path::new(manifest_dir).join("Sparkle.framework");
-
-    if src.exists() {
-        let status = Command::new("cp")
-            .args(["-R", src.to_str().unwrap(), dst.to_str().unwrap()])
-            .status()
-            .expect("Failed to copy Sparkle.framework");
-
-        if !status.success() {
-            panic!("Failed to copy Sparkle.framework");
-        }
-    } else {
-        panic!("Sparkle.framework not found in extracted archive");
-    }
-
-    let _ = std::fs::remove_dir_all(&temp_dir);
-
-    println!("cargo:warning=Sparkle.framework downloaded successfully");
 }
