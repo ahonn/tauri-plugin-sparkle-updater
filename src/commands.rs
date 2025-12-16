@@ -1,43 +1,58 @@
 use tauri::{command, AppHandle, Runtime};
 
+use crate::Error;
 use crate::Result;
 use crate::SparkleUpdaterExt;
 
+/// Helper macro to get the updater or return UpdaterNotReady error
+macro_rules! get_updater {
+    ($app:expr) => {
+        match $app.sparkle_updater() {
+            Some(updater) => updater,
+            None => return Err(Error::UpdaterNotReady),
+        }
+    };
+}
+
 #[command]
 pub(crate) async fn check_for_updates<R: Runtime>(app: AppHandle<R>) -> Result<()> {
-    app.sparkle_updater().check_for_updates()
+    get_updater!(app).check_for_updates()
 }
 
 #[command]
 pub(crate) async fn check_for_updates_in_background<R: Runtime>(app: AppHandle<R>) -> Result<()> {
-    app.sparkle_updater().check_for_updates_in_background()
+    get_updater!(app).check_for_updates_in_background()
 }
 
 #[command]
 pub(crate) async fn can_check_for_updates<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
-    app.sparkle_updater().can_check_for_updates()
+    get_updater!(app).can_check_for_updates()
 }
 
 #[command]
 pub(crate) async fn current_version<R: Runtime>(app: AppHandle<R>) -> Result<String> {
-    app.sparkle_updater().current_version()
+    // current_version uses app.package_info(), so it works even without Sparkle
+    match app.sparkle_updater() {
+        Some(updater) => updater.current_version(),
+        None => Ok(app.package_info().version.to_string()),
+    }
 }
 
 #[command]
 pub(crate) async fn feed_url<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>> {
-    app.sparkle_updater().feed_url()
+    get_updater!(app).feed_url()
 }
 
 #[command]
 pub(crate) async fn set_feed_url<R: Runtime>(app: AppHandle<R>, url: String) -> Result<()> {
-    app.sparkle_updater().set_feed_url(&url)
+    get_updater!(app).set_feed_url(&url)
 }
 
 #[command]
 pub(crate) async fn automatically_checks_for_updates<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<bool> {
-    app.sparkle_updater().automatically_checks_for_updates()
+    get_updater!(app).automatically_checks_for_updates()
 }
 
 #[command]
@@ -45,15 +60,14 @@ pub(crate) async fn set_automatically_checks_for_updates<R: Runtime>(
     app: AppHandle<R>,
     enabled: bool,
 ) -> Result<()> {
-    app.sparkle_updater()
-        .set_automatically_checks_for_updates(enabled)
+    get_updater!(app).set_automatically_checks_for_updates(enabled)
 }
 
 #[command]
 pub(crate) async fn automatically_downloads_updates<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<bool> {
-    app.sparkle_updater().automatically_downloads_updates()
+    get_updater!(app).automatically_downloads_updates()
 }
 
 #[command]
@@ -61,16 +75,15 @@ pub(crate) async fn set_automatically_downloads_updates<R: Runtime>(
     app: AppHandle<R>,
     enabled: bool,
 ) -> Result<()> {
-    app.sparkle_updater()
-        .set_automatically_downloads_updates(enabled)
+    get_updater!(app).set_automatically_downloads_updates(enabled)
 }
 
 #[command]
 pub(crate) async fn last_update_check_date<R: Runtime>(app: AppHandle<R>) -> Result<Option<f64>> {
-    app.sparkle_updater().last_update_check_date()
+    get_updater!(app).last_update_check_date()
 }
 
 #[command]
 pub(crate) async fn reset_update_cycle<R: Runtime>(app: AppHandle<R>) -> Result<()> {
-    app.sparkle_updater().reset_update_cycle()
+    get_updater!(app).reset_update_cycle()
 }

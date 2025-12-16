@@ -36,4 +36,4 @@ Sparkle.framework/
 # Environment
 .envrc
 
-docs/
+sparkle-bin/

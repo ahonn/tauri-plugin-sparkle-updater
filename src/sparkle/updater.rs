@@ -1,6 +1,7 @@
 //! SparkleUpdater - Rust wrapper around Sparkle framework
 //!
 //! Provides a safe Rust interface to the macOS Sparkle update framework.
+//! Configuration is read from the app's Info.plist by Sparkle.
 
 use std::ptr;
 use std::sync::Arc;
@@ -11,11 +12,10 @@ use objc2::rc::Retained;
 use objc2::runtime::NSObject;
 use objc2::{msg_send, ClassType, MainThreadMarker};
 use objc2_foundation::{NSBundle, NSDictionary, NSError, NSString, NSURL};
-use tauri::{plugin::PluginApi, AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Runtime};
 
 use super::bindings::{SPUStandardUpdaterController, SPUUpdater};
 use super::delegate::SparkleDelegate;
-use crate::config::Config;
 use crate::{Error, Result};
 
 /// Wrapper for raw pointer that can be sent across threads.
@@ -45,19 +45,53 @@ impl<T> SendPtr<T> {
     }
 }
 
+/// Check if the app is running inside a valid macOS bundle.
+/// Sparkle requires a properly bundled .app with a valid bundle identifier.
+fn is_valid_bundle() -> bool {
+    unsafe {
+        let bundle = NSBundle::mainBundle();
+        let identifier: Option<Retained<NSString>> = msg_send![&bundle, bundleIdentifier];
+        match identifier {
+            Some(id) => {
+                let id_str = id.to_string();
+                // Check for valid bundle identifier (not empty and not default dev identifier)
+                !id_str.is_empty() && id_str != "com.apple.dt.Xcode.tool"
+            }
+            None => false,
+        }
+    }
+}
+
 /// Initialize the Sparkle updater plugin.
+///
+/// Sparkle reads its configuration from Info.plist:
+/// - `SUFeedURL` - Appcast feed URL
+/// - `SUPublicEDKey` - Ed25519 public key for signature verification
+/// - `SUEnableAutomaticChecks` - Enable automatic update checks
+/// - `SUAutomaticallyUpdate` - Automatically download and install updates
+/// - `SUScheduledCheckInterval` - Check interval in seconds
 ///
 /// Note: This function must be called on the main thread (which is the case
 /// for Tauri plugin setup).
-pub fn init<R: Runtime>(
-    app: &AppHandle<R>,
-    api: PluginApi<R, Config>,
-) -> Result<SparkleUpdater<R>> {
-    let config = api.config();
-
+///
+/// Returns `None` if running outside a valid macOS bundle (e.g., during `tauri dev`).
+pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>> {
     // Get main thread marker - this function is called during Tauri plugin setup on main thread
     let mtm = MainThreadMarker::new()
         .ok_or_else(|| Error::SparkleInit("Must be called on main thread".to_string()))?;
+
+    // Check if running in a valid bundle - Sparkle requires this
+    if !is_valid_bundle() {
+        warn!(
+            "Sparkle updater disabled: not running inside a valid macOS bundle. \
+             This is expected during development (tauri dev). \
+             Sparkle will work in release builds (tauri build)."
+        );
+        return Ok(None);
+    }
+
+    // Check for required Info.plist keys and warn if missing
+    check_info_plist_keys();
 
     // Create the delegate for event handling
     let delegate = SparkleDelegate::new(mtm);
@@ -69,7 +103,7 @@ pub fn init<R: Runtime>(
     }));
 
     // Create the controller with the delegate
-    // This runs on main thread during Tauri plugin setup
+    // Sparkle will read configuration from Info.plist automatically
     let controller = unsafe {
         let alloc: objc2::rc::Allocated<SPUStandardUpdaterController> =
             objc2::msg_send![SPUStandardUpdaterController::class(), alloc];
@@ -86,25 +120,7 @@ pub fn init<R: Runtime>(
 
     let updater: Retained<SPUUpdater> = controller.updater();
 
-    // Apply configuration
-    // 1. Set feed URL
-    let ns_string = NSString::from_str(&config.feed_url);
-    let ns_url: Option<Retained<NSURL>> =
-        unsafe { objc2::msg_send![NSURL::class(), URLWithString: &*ns_string] };
-    if let Some(url) = ns_url {
-        updater.set_feed_url(Some(&url));
-    }
-
-    // 2. Set automatic check
-    updater.set_automatically_checks_for_updates(config.automatically_checks_for_updates);
-
-    // 3. Set automatic download
-    updater.set_automatically_downloads_updates(config.automatically_downloads_updates);
-
-    // 4. Set update check interval (in seconds)
-    updater.set_update_check_interval(config.update_check_interval as f64);
-
-    // 5. Start updater
+    // Start the updater
     let mut error: *mut NSError = ptr::null_mut();
     let success = updater.start_updater(&mut error);
 
@@ -121,15 +137,12 @@ pub fn init<R: Runtime>(
     // Store raw pointer for dispatch operations in command handlers
     let controller_ptr = SendPtr::new(Retained::as_ptr(&controller));
 
-    // Check for SUPublicEDKey in Info.plist and warn if missing
-    check_info_plist_keys();
-
-    Ok(SparkleUpdater {
+    Ok(Some(SparkleUpdater {
         app: app.clone(),
         _controller: controller,
         controller_ptr,
         _delegate: delegate,
-    })
+    }))
 }
 
 /// Checks for required Sparkle keys in Info.plist and logs warnings if missing.
@@ -139,14 +152,23 @@ fn check_info_plist_keys() {
         let info_dict: Option<Retained<NSDictionary>> = msg_send![&bundle, infoDictionary];
 
         if let Some(dict) = info_dict {
+            // Check SUPublicEDKey
             let key = NSString::from_str("SUPublicEDKey");
             let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
-
             if value.is_none() {
                 warn!(
                     "SUPublicEDKey not found in Info.plist. \
-                     Sparkle will not be able to verify update signatures. \
-                     Add SUPublicEDKey to your bundle.macOS.infoPlist in tauri.conf.json."
+                     Sparkle will not be able to verify update signatures."
+                );
+            }
+
+            // Check SUFeedURL
+            let key = NSString::from_str("SUFeedURL");
+            let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
+            if value.is_none() {
+                warn!(
+                    "SUFeedURL not found in Info.plist. \
+                     You must set a feed URL before checking for updates."
                 );
             }
         }

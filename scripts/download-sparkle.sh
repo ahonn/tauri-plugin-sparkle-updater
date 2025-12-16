@@ -26,4 +26,14 @@ tar -xf "$TEMP_DIR/sparkle.tar.xz" -C "$TEMP_DIR"
 
 cp -R "$TEMP_DIR/Sparkle.framework" .
 
+# Also copy the bin tools (generate_keys, sign_update)
+if [ -d "$TEMP_DIR/bin" ]; then
+    echo "Copying Sparkle bin tools..."
+    cp -R "$TEMP_DIR/bin" ./sparkle-bin
+    chmod +x ./sparkle-bin/*
+fi
+
 echo "Done!"
+echo ""
+echo "To generate EdDSA keys for signing updates:"
+echo "  ./sparkle-bin/generate_keys"

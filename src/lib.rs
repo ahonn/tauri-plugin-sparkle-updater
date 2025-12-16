@@ -4,30 +4,38 @@ use tauri::{
 };
 
 mod commands;
-mod config;
 mod error;
 mod events;
 mod sparkle;
 
-pub use config::{Config, ConfigError};
 pub use error::{Error, Result};
 
 use sparkle::SparkleUpdater;
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the sparkle-updater APIs.
 pub trait SparkleUpdaterExt<R: Runtime> {
-    fn sparkle_updater(&self) -> &SparkleUpdater<R>;
+    /// Returns the SparkleUpdater if available.
+    ///
+    /// Returns `None` when running outside a valid macOS bundle (e.g., during `tauri dev`).
+    fn sparkle_updater(&self) -> Option<tauri::State<'_, SparkleUpdater<R>>>;
 }
 
 impl<R: Runtime, T: Manager<R>> crate::SparkleUpdaterExt<R> for T {
-    fn sparkle_updater(&self) -> &SparkleUpdater<R> {
-        self.state::<SparkleUpdater<R>>().inner()
+    fn sparkle_updater(&self) -> Option<tauri::State<'_, SparkleUpdater<R>>> {
+        self.try_state::<SparkleUpdater<R>>()
     }
 }
 
 /// Initializes the plugin.
-pub fn init<R: Runtime>() -> TauriPlugin<R, Config> {
-    Builder::<R, Config>::new("sparkle-updater")
+///
+/// Sparkle configuration is read from the app's Info.plist:
+/// - `SUFeedURL` - Appcast feed URL
+/// - `SUPublicEDKey` - Ed25519 public key for signature verification
+/// - `SUEnableAutomaticChecks` - Enable automatic update checks (default: true)
+/// - `SUAutomaticallyUpdate` - Automatically download and install updates (default: false)
+/// - `SUScheduledCheckInterval` - Check interval in seconds (default: 86400)
+pub fn init<R: Runtime>() -> TauriPlugin<R> {
+    Builder::new("sparkle-updater")
         .invoke_handler(tauri::generate_handler![
             commands::check_for_updates,
             commands::check_for_updates_in_background,
@@ -42,12 +50,10 @@ pub fn init<R: Runtime>() -> TauriPlugin<R, Config> {
             commands::last_update_check_date,
             commands::reset_update_cycle,
         ])
-        .setup(|app, api| {
-            let config = api.config().clone();
-            config.validate()?;
-
-            let sparkle_updater = sparkle::init(app, api)?;
-            app.manage(sparkle_updater);
+        .setup(|app, _api| {
+            if let Some(sparkle_updater) = sparkle::init(app)? {
+                app.manage(sparkle_updater);
+            }
             Ok(())
         })
         .build()

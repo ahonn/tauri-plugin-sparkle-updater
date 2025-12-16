@@ -1,16 +1,11 @@
 use serde::{ser::Serializer, Serialize};
 
-use crate::config::ConfigError;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
-
-    #[error("Configuration error: {0}")]
-    Config(#[from] ConfigError),
 
     #[error("Invalid feed URL: {0}")]
     InvalidFeedUrl(String),

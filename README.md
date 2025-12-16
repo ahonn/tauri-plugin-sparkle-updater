@@ -39,45 +39,48 @@ Or download manually from [Sparkle releases](https://github.com/sparkle-project/
 ### 3. Generate EdDSA keys
 
 ```bash
-# Using Sparkle's generate_keys tool
-./Sparkle.framework/bin/generate_keys
+# Using Sparkle's generate_keys tool (included after running download-sparkle.sh)
+./sparkle-bin/generate_keys
 ```
 
-This saves the private key to your Keychain and prints the public key (base64-encoded).
+This saves the private key to your macOS Keychain and prints the public key (base64-encoded).
+
+> **Note**: Sparkle uses its own Ed25519 key format, which is different from Tauri's built-in updater (minisign). You cannot reuse keys between them - you must generate new keys with Sparkle's tool.
 
 ## Configuration
 
-### Plugin Configuration
+### Info.plist Configuration
 
-Add to `src-tauri/tauri.conf.json`:
+Sparkle reads its configuration directly from your app's `Info.plist`. Create `src-tauri/Info.plist` with the following Sparkle keys:
 
-```json
-{
-  "plugins": {
-    "sparkle-updater": {
-      "feedUrl": "https://example.com/appcast.xml",
-      "publicEdKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
-      "automaticallyChecksForUpdates": true,
-      "automaticallyDownloadsUpdates": false,
-      "updateCheckInterval": 86400
-    }
-  }
-}
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>SUFeedURL</key>
+    <string>https://example.com/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>YOUR_BASE64_ED25519_PUBLIC_KEY</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAutomaticallyUpdate</key>
+    <false/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+</dict>
+</plist>
 ```
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `feedUrl` | string | *required* | URL to your appcast XML feed |
-| `publicEdKey` | string | *required in release* | Base64-encoded Ed25519 public key |
-| `automaticallyChecksForUpdates` | boolean | `true` | Enable automatic update checks |
-| `automaticallyDownloadsUpdates` | boolean | `false` | Auto-download updates when found |
-| `updateCheckInterval` | number | `86400` | Check interval in seconds (default: 1 day) |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `SUFeedURL` | string | *required* | URL to your appcast XML feed |
+| `SUPublicEDKey` | string | *required in release* | Base64-encoded Ed25519 public key |
+| `SUEnableAutomaticChecks` | boolean | `true` | Enable automatic update checks |
+| `SUAutomaticallyUpdate` | boolean | `false` | Auto-download and install updates |
+| `SUScheduledCheckInterval` | integer | `86400` | Check interval in seconds (default: 1 day) |
 
-### Info.plist (Auto-generated)
-
-The plugin automatically generates `Info.plist` with Sparkle keys (`SUFeedURL`, `SUPublicEDKey`) from your plugin configuration during build. The file is created in your `src-tauri` directory and merged into the final app bundle by Tauri.
-
-If you have an existing `Info.plist`, the Sparkle keys will be merged into it, preserving your other settings.
+Tauri automatically merges your `src-tauri/Info.plist` into the final app bundle.
 
 ### Bundle Configuration
 
@@ -113,18 +116,21 @@ fn main() {
 use tauri_plugin_sparkle_updater::SparkleUpdaterExt;
 
 fn check_updates(app: &tauri::AppHandle) {
-    let updater = app.sparkle_updater();
+    // sparkle_updater() returns Option - None during `tauri dev`
+    if let Some(updater) = app.sparkle_updater() {
+        // Check with UI
+        updater.check_for_updates().unwrap();
 
-    // Check with UI
-    updater.check_for_updates().unwrap();
+        // Background check
+        updater.check_for_updates_in_background().unwrap();
 
-    // Background check
-    updater.check_for_updates_in_background().unwrap();
-
-    // Get current version
-    let version = updater.current_version().unwrap();
+        // Get current version
+        let version = updater.current_version().unwrap();
+    }
 }
 ```
+
+> **Note**: `sparkle_updater()` returns `None` when running with `tauri dev` because Sparkle requires a valid macOS `.app` bundle. It works normally in release builds (`tauri build`).
 
 ### JavaScript/TypeScript API
 
@@ -204,10 +210,42 @@ Create an appcast XML file for your updates:
 Sign your updates using Sparkle's `sign_update` tool:
 
 ```bash
-./Sparkle.framework/bin/sign_update App-1.1.0.dmg
+./sparkle-bin/sign_update App-1.1.0.dmg
+# Output: sparkle:edSignature="xxxx" length="12345678"
 ```
 
-## Sandbox & Signing
+Copy the output values into your appcast XML.
+
+## Signing
+
+### Understanding the Two Types of Signing
+
+There are two separate signing mechanisms involved:
+
+| Type | Purpose | Tool | Key Storage |
+|------|---------|------|-------------|
+| **Apple Code Signing** | macOS trusts the app binary | `codesign` (via Tauri) | Apple Developer Certificate |
+| **Sparkle Update Signing** | Verify update packages | `sign_update` | macOS Keychain (Ed25519) |
+
+**Important**: These are completely independent:
+- Apple code signing is handled by Tauri's build process - no changes needed
+- Sparkle update signing requires using `./sparkle-bin/sign_update` for your DMG/ZIP files
+
+### Migrating from Tauri's Built-in Updater
+
+If you were using Tauri's built-in updater with minisign:
+
+```bash
+# Before (Tauri updater - minisign format)
+tauri signer sign app.tar.gz
+
+# After (Sparkle - Ed25519 format)
+./sparkle-bin/sign_update app.dmg
+```
+
+You **cannot** reuse minisign keys with Sparkle. Generate new keys with `./sparkle-bin/generate_keys`.
+
+### Sandbox Requirements
 
 For sandboxed applications:
 

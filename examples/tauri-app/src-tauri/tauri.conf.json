@@ -23,15 +23,6 @@
       }
     ]
   },
-  "plugins": {
-    "sparkle-updater": {
-      "feedUrl": "https://example.com/appcast.xml",
-      "publicEdKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
-      "automaticallyChecksForUpdates": true,
-      "automaticallyDownloadsUpdates": false,
-      "updateCheckInterval": 86400
-    }
-  },
   "bundle": {
     "active": true,
     "targets": "all",
