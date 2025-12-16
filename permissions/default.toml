@@ -1,7 +1,6 @@
 [default]
 description = "Default permissions for the Sparkle updater plugin"
 permissions = [
-    "allow-ping",
     "allow-check-for-updates",
     "allow-check-for-updates-in-background",
     "allow-can-check-for-updates",

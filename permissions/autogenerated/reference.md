@@ -4,7 +4,6 @@ Default permissions for the Sparkle updater plugin
 
 #### This default permission set includes the following:
 
-- `allow-ping`
 - `allow-check-for-updates`
 - `allow-check-for-updates-in-background`
 - `allow-can-check-for-updates`

@@ -23,6 +23,15 @@
       }
     ]
   },
+  "plugins": {
+    "sparkle-updater": {
+      "feedUrl": "https://example.com/appcast.xml",
+      "publicEdKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
+      "automaticallyChecksForUpdates": true,
+      "automaticallyDownloadsUpdates": false,
+      "updateCheckInterval": 86400
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
@@ -32,6 +41,13 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "frameworks": ["../../../Sparkle.framework"],
+      "infoPlist": {
+        "SUPublicEDKey": "YOUR_BASE64_ED25519_PUBLIC_KEY",
+        "SUFeedURL": "https://example.com/appcast.xml"
+      }
+    }
   }
 }

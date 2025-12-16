@@ -6,13 +6,20 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-  #[error(transparent)]
-  Io(#[from] std::io::Error),
-  #[cfg(mobile)]
-  #[error(transparent)]
-  PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
-  #[error("Configuration error: {0}")]
-  Config(#[from] ConfigError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error("Configuration error: {0}")]
+    Config(#[from] ConfigError),
+
+    #[error("Invalid feed URL: {0}")]
+    InvalidFeedUrl(String),
+
+    #[error("Sparkle initialization failed: {0}")]
+    SparkleInit(String),
+
+    #[error("Updater not ready")]
+    UpdaterNotReady,
 }
 
 impl Serialize for Error {

@@ -1,7 +1,6 @@
 use std::path::Path;
 
 const COMMANDS: &[&str] = &[
-    "ping",
     "check_for_updates",
     "check_for_updates_in_background",
     "can_check_for_updates",
