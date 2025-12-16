@@ -253,6 +253,67 @@ For sandboxed applications:
 2. Configure Sparkle XPC service (see [Sparkle docs](https://sparkle-project.org/documentation/sandboxing/))
 3. Ensure proper code signing and notarization
 
+## CI/CD Integration
+
+### GitHub Actions Setup
+
+To sign DMG files with Sparkle in your CI/CD pipeline:
+
+#### 1. Export Private Key
+
+```bash
+# Export from your local Keychain
+./sparkle-bin/generate_keys -x sparkle_private_key.txt
+cat sparkle_private_key.txt
+# Output: HfWkFlscLFHsthUMxzU+ERX5HvjUwq/VQUsOgNKND4U= (example)
+```
+
+#### 2. Add GitHub Secret
+
+Add `SPARKLE_PRIVATE_KEY` to your repository secrets (Settings → Secrets → Actions).
+
+#### 3. Add Signing Step to Workflow
+
+```yaml
+- name: Download Sparkle tools
+  run: |
+    curl -L -o sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz"
+    mkdir -p sparkle-tools
+    tar -xf sparkle.tar.xz -C sparkle-tools
+    chmod +x sparkle-tools/bin/*
+
+- name: Sign DMG with Sparkle
+  env:
+    SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+  run: |
+    DMG_PATH=$(find ./target/release/bundle/dmg -name "*.dmg" -print -quit)
+
+    # Write key to temp file
+    echo "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_key
+
+    # Sign and get signature
+    SIGNATURE=$(./sparkle-tools/bin/sign_update "$DMG_PATH" -f /tmp/sparkle_key)
+    rm -f /tmp/sparkle_key
+
+    echo "Signature: $SIGNATURE"
+    # Output: sparkle:edSignature="xxx" length="123456"
+```
+
+### Appcast Requirements
+
+Your appcast feed must serve **DMG files** (not `.tar.gz`) with Sparkle signatures:
+
+```xml
+<enclosure
+  url="https://cdn.example.com/MyApp-1.0.0.dmg"
+  sparkle:edSignature="SPARKLE_SIGNATURE"
+  length="12345678"
+  type="application/octet-stream"
+/>
+```
+
+> **Note**: Sparkle signatures are different from Tauri's minisign signatures. You need to update your release pipeline to generate Sparkle signatures for DMG files.
+
 ## Cross-Platform
 
 For Windows/Linux, use the official [tauri-plugin-updater](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater):
