@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-check-for-updates-in-background"
+description = "Enables the check_for_updates_in_background command without any pre-configured scope."
+commands.allow = ["check_for_updates_in_background"]
+
+[[permission]]
+identifier = "deny-check-for-updates-in-background"
+description = "Denies the check_for_updates_in_background command without any pre-configured scope."
+commands.deny = ["check_for_updates_in_background"]

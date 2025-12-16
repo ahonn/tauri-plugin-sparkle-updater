@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-automatically-checks-for-updates"
+description = "Enables the automatically_checks_for_updates command without any pre-configured scope."
+commands.allow = ["automatically_checks_for_updates"]
+
+[[permission]]
+identifier = "deny-automatically-checks-for-updates"
+description = "Denies the automatically_checks_for_updates command without any pre-configured scope."
+commands.deny = ["automatically_checks_for_updates"]

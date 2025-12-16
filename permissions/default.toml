@@ -1,0 +1,17 @@
+[default]
+description = "Default permissions for the Sparkle updater plugin"
+permissions = [
+    "allow-ping",
+    "allow-check-for-updates",
+    "allow-check-for-updates-in-background",
+    "allow-can-check-for-updates",
+    "allow-current-version",
+    "allow-feed-url",
+    "allow-set-feed-url",
+    "allow-automatically-checks-for-updates",
+    "allow-set-automatically-checks-for-updates",
+    "allow-automatically-downloads-updates",
+    "allow-set-automatically-downloads-updates",
+    "allow-last-update-check-date",
+    "allow-reset-update-cycle"
+]

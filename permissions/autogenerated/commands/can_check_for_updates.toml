@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-can-check-for-updates"
+description = "Enables the can_check_for_updates command without any pre-configured scope."
+commands.allow = ["can_check_for_updates"]
+
+[[permission]]
+identifier = "deny-can-check-for-updates"
+description = "Denies the can_check_for_updates command without any pre-configured scope."
+commands.deny = ["can_check_for_updates"]

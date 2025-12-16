@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-last-update-check-date"
+description = "Enables the last_update_check_date command without any pre-configured scope."
+commands.allow = ["last_update_check_date"]
+
+[[permission]]
+identifier = "deny-last-update-check-date"
+description = "Denies the last_update_check_date command without any pre-configured scope."
+commands.deny = ["last_update_check_date"]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-current-version"
+description = "Enables the current_version command without any pre-configured scope."
+commands.allow = ["current_version"]
+
+[[permission]]
+identifier = "deny-current-version"
+description = "Denies the current_version command without any pre-configured scope."
+commands.deny = ["current_version"]

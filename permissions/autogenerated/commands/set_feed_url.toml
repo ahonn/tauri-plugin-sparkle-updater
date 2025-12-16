@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-feed-url"
+description = "Enables the set_feed_url command without any pre-configured scope."
+commands.allow = ["set_feed_url"]
+
+[[permission]]
+identifier = "deny-set-feed-url"
+description = "Denies the set_feed_url command without any pre-configured scope."
+commands.deny = ["set_feed_url"]

@@ -1,0 +1,39 @@
+/.vs
+.DS_Store
+.Thumbs.db
+*.sublime*
+.idea/
+debug.log
+package-lock.json
+.vscode/settings.json
+yarn.lock
+
+/.tauri
+/target
+Cargo.lock
+node_modules/
+
+dist-js
+dist
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# Sparkle framework (downloaded automatically by build.rs)
+Sparkle.framework/
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Rustup (local toolchain)
+.rustup/
+
+# Environment
+.envrc
+
+docs/
