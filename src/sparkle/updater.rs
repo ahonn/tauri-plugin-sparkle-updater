@@ -1,8 +1,3 @@
-//! SparkleUpdater - Rust wrapper around Sparkle framework
-//!
-//! Provides a safe Rust interface to the macOS Sparkle update framework.
-//! Configuration is read from the app's Info.plist by Sparkle.
-
 use std::ptr;
 use std::sync::Arc;
 
@@ -18,8 +13,7 @@ use super::bindings::{SPUStandardUpdaterController, SPUUpdater};
 use super::delegate::SparkleDelegate;
 use crate::{Error, Result};
 
-/// Wrapper for raw pointer that can be sent across threads.
-/// Safety: The pointer is only dereferenced on the main thread via dispatch.
+/// Pointer wrapper for cross-thread dispatch. Only dereference on main thread.
 #[repr(transparent)]
 struct SendPtr<T>(*const T);
 
@@ -39,14 +33,11 @@ impl<T> SendPtr<T> {
         SendPtr(ptr)
     }
 
-    /// Safety: Must only be called on the main thread.
     unsafe fn as_ref(&self) -> &T {
         &*self.0
     }
 }
 
-/// Check if the app is running inside a valid macOS bundle.
-/// Sparkle requires a properly bundled .app with a valid bundle identifier.
 fn is_valid_bundle() -> bool {
     unsafe {
         let bundle = NSBundle::mainBundle();
@@ -54,7 +45,6 @@ fn is_valid_bundle() -> bool {
         match identifier {
             Some(id) => {
                 let id_str = id.to_string();
-                // Check for valid bundle identifier (not empty and not default dev identifier)
                 !id_str.is_empty() && id_str != "com.apple.dt.Xcode.tool"
             }
             None => false,
@@ -62,25 +52,11 @@ fn is_valid_bundle() -> bool {
     }
 }
 
-/// Initialize the Sparkle updater plugin.
-///
-/// Sparkle reads its configuration from Info.plist:
-/// - `SUFeedURL` - Appcast feed URL
-/// - `SUPublicEDKey` - Ed25519 public key for signature verification
-/// - `SUEnableAutomaticChecks` - Enable automatic update checks
-/// - `SUAutomaticallyUpdate` - Automatically download and install updates
-/// - `SUScheduledCheckInterval` - Check interval in seconds
-///
-/// Note: This function must be called on the main thread (which is the case
-/// for Tauri plugin setup).
-///
 /// Returns `None` if running outside a valid macOS bundle (e.g., during `tauri dev`).
 pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>> {
-    // Get main thread marker - this function is called during Tauri plugin setup on main thread
     let mtm = MainThreadMarker::new()
         .ok_or_else(|| Error::SparkleInit("Must be called on main thread".to_string()))?;
 
-    // Check if running in a valid bundle - Sparkle requires this
     if !is_valid_bundle() {
         warn!(
             "Sparkle updater disabled: not running inside a valid macOS bundle. \
@@ -90,25 +66,17 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
         return Ok(None);
     }
 
-    // Check for required Info.plist keys and warn if missing
     check_info_plist_keys();
 
-    // Create the delegate for event handling
     let delegate = SparkleDelegate::new(mtm);
-
-    // Set up the event emitter
     let app_clone = app.clone();
     delegate.set_emitter(Arc::new(move |event: &str, payload: &str| {
         let _ = app_clone.emit(event, payload);
     }));
 
-    // Create the controller with the delegate
-    // Sparkle will read configuration from Info.plist automatically
     let controller = unsafe {
         let alloc: objc2::rc::Allocated<SPUStandardUpdaterController> =
             objc2::msg_send![SPUStandardUpdaterController::class(), alloc];
-        // Pass delegate to the controller during initialization
-        // SparkleDelegate inherits from NSObject via define_class!, so Deref works
         let delegate_obj: &NSObject = &*delegate;
         SPUStandardUpdaterController::init_with_starting_updater(
             alloc,
@@ -119,8 +87,6 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
     };
 
     let updater: Retained<SPUUpdater> = controller.updater();
-
-    // Start the updater
     let mut error: *mut NSError = ptr::null_mut();
     let success = updater.start_updater(&mut error);
 
@@ -134,7 +100,6 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
         return Err(Error::SparkleInit("Failed to start updater".to_string()));
     }
 
-    // Store raw pointer for dispatch operations in command handlers
     let controller_ptr = SendPtr::new(Retained::as_ptr(&controller));
 
     Ok(Some(SparkleUpdater {
@@ -145,14 +110,12 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
     }))
 }
 
-/// Checks for required Sparkle keys in Info.plist and logs warnings if missing.
 fn check_info_plist_keys() {
     unsafe {
         let bundle = NSBundle::mainBundle();
         let info_dict: Option<Retained<NSDictionary>> = msg_send![&bundle, infoDictionary];
 
         if let Some(dict) = info_dict {
-            // Check SUPublicEDKey
             let key = NSString::from_str("SUPublicEDKey");
             let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
             if value.is_none() {
@@ -162,7 +125,6 @@ fn check_info_plist_keys() {
                 );
             }
 
-            // Check SUFeedURL
             let key = NSString::from_str("SUFeedURL");
             let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
             if value.is_none() {
@@ -175,28 +137,19 @@ fn check_info_plist_keys() {
     }
 }
 
-/// Access to the Sparkle updater APIs.
 pub struct SparkleUpdater<R: Runtime> {
     #[allow(dead_code)]
     app: AppHandle<R>,
-    /// Retained reference to keep the controller alive.
     _controller: Retained<SPUStandardUpdaterController>,
-    /// Raw pointer for main-thread dispatch operations.
     controller_ptr: SendPtr<SPUStandardUpdaterController>,
-    /// Retained reference to keep the delegate alive (Sparkle holds a weak reference).
     _delegate: Retained<SparkleDelegate>,
 }
 
-// Safety: All SPUStandardUpdaterController operations are dispatched to the main thread
-// using GCD. The raw pointer is only dereferenced within exec_sync on the main thread.
+// All operations dispatched to main thread via GCD
 unsafe impl<R: Runtime> Send for SparkleUpdater<R> {}
 unsafe impl<R: Runtime> Sync for SparkleUpdater<R> {}
 
 impl<R: Runtime> SparkleUpdater<R> {
-    /// Check for updates and show the standard update UI.
-    ///
-    /// This will display the Sparkle update dialog with release notes,
-    /// download progress, and installation options.
     pub fn check_for_updates(&self) -> Result<()> {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {
@@ -206,10 +159,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Check for updates silently in the background.
-    ///
-    /// This will not show any UI unless an update is found and ready
-    /// for installation.
     pub fn check_for_updates_in_background(&self) -> Result<()> {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {
@@ -219,12 +168,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns whether the updater can currently check for updates.
-    ///
-    /// This may return false if:
-    /// - The feed URL is not configured
-    /// - An update check is already in progress
-    /// - The updater has not been started
     pub fn can_check_for_updates(&self) -> Result<bool> {
         let ptr = self.controller_ptr;
         Ok(Queue::main().exec_sync(move || {
@@ -233,12 +176,10 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Returns the current application version.
     pub fn current_version(&self) -> Result<String> {
         Ok(self.app.package_info().version.to_string())
     }
 
-    /// Returns the current feed URL.
     pub fn feed_url(&self) -> Result<Option<String>> {
         let ptr = self.controller_ptr;
         Ok(Queue::main().exec_sync(move || {
@@ -255,11 +196,7 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Sets the feed URL.
-    ///
-    /// This can be used to change the appcast URL at runtime.
     pub fn set_feed_url(&self, url: &str) -> Result<()> {
-        // Validate URL format first
         url::Url::parse(url).map_err(|_| Error::InvalidFeedUrl(url.to_string()))?;
 
         let url_string = url.to_string();
@@ -283,7 +220,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         result
     }
 
-    /// Returns whether automatic update checks are enabled.
     pub fn automatically_checks_for_updates(&self) -> Result<bool> {
         let ptr = self.controller_ptr;
         Ok(Queue::main().exec_sync(move || {
@@ -292,7 +228,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Sets whether automatic update checks are enabled.
     pub fn set_automatically_checks_for_updates(&self, enabled: bool) -> Result<()> {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {
@@ -304,7 +239,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns whether updates are automatically downloaded.
     pub fn automatically_downloads_updates(&self) -> Result<bool> {
         let ptr = self.controller_ptr;
         Ok(Queue::main().exec_sync(move || {
@@ -313,7 +247,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Sets whether updates are automatically downloaded.
     pub fn set_automatically_downloads_updates(&self, enabled: bool) -> Result<()> {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {
@@ -325,9 +258,7 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns the date of the last update check as Unix timestamp (milliseconds since epoch).
-    ///
-    /// Returns None if no update check has been performed yet.
+    /// Returns Unix timestamp in milliseconds. None if never checked.
     pub fn last_update_check_date(&self) -> Result<Option<f64>> {
         let ptr = self.controller_ptr;
         Ok(Queue::main().exec_sync(move || {
@@ -336,17 +267,13 @@ impl<R: Runtime> SparkleUpdater<R> {
             match date {
                 Some(date) => {
                     let seconds: f64 = unsafe { objc2::msg_send![&date, timeIntervalSince1970] };
-                    Some(seconds * 1000.0) // Convert to milliseconds
+                    Some(seconds * 1000.0)
                 }
                 None => None,
             }
         }))
     }
 
-    /// Resets the update cycle.
-    ///
-    /// This allows checking for updates immediately regardless of the
-    /// configured check interval. Useful for testing.
     pub fn reset_update_cycle(&self) -> Result<()> {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {

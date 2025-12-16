@@ -4,7 +4,6 @@ use crate::Error;
 use crate::Result;
 use crate::SparkleUpdaterExt;
 
-/// Helper macro to get the updater or return UpdaterNotReady error
 macro_rules! get_updater {
     ($app:expr) => {
         match $app.sparkle_updater() {
@@ -31,7 +30,6 @@ pub(crate) async fn can_check_for_updates<R: Runtime>(app: AppHandle<R>) -> Resu
 
 #[command]
 pub(crate) async fn current_version<R: Runtime>(app: AppHandle<R>) -> Result<String> {
-    // current_version uses app.package_info(), so it works even without Sparkle
     match app.sparkle_updater() {
         Some(updater) => updater.current_version(),
         None => Ok(app.package_info().version.to_string()),
