@@ -17,6 +17,16 @@ pub struct UpdateInfo {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct VersionInfo {
+    pub version: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct ErrorPayload {
     pub message: String,
+    pub code: i64,
+    pub domain: String,
 }
+
+#[derive(Clone, Debug, Serialize)]
+pub struct EmptyPayload {}

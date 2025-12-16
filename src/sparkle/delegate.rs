@@ -1,15 +1,17 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use log::error;
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
-use objc2::{define_class, msg_send, MainThreadMarker, MainThreadOnly, DeclaredClass};
+use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
 use objc2_foundation::NSString;
+use serde::Serialize;
 
 use super::bindings::SPUAppcastItem;
 use crate::events::*;
 
-pub type EventEmitter = Arc<dyn Fn(&str, &str) + Send + Sync>;
+pub type EventEmitter = Arc<dyn Fn(&str, String) + Send + Sync>;
 
 pub struct DelegateIvars {
     emitter: RefCell<Option<EventEmitter>>,
@@ -29,7 +31,7 @@ define_class!(
             _updater: &NSObject,
             _appcast: &NSObject,
         ) {
-            self.emit_event(EVENT_CHECKING, "{}");
+            self.emit(EVENT_CHECKING, &EmptyPayload {});
         }
 
         #[unsafe(method(updater:didFindValidUpdate:))]
@@ -38,18 +40,15 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            let version = item.display_version_string().to_string();
-            let notes = item.item_description().map(|s| s.to_string());
-            let payload = serde_json::json!({
-                "version": version,
-                "releaseNotes": notes
+            self.emit(EVENT_UPDATE_AVAILABLE, &UpdateInfo {
+                version: item.display_version_string().to_string(),
+                release_notes: item.item_description().map(|s| s.to_string()),
             });
-            self.emit_event(EVENT_UPDATE_AVAILABLE, &payload.to_string());
         }
 
         #[unsafe(method(updaterDidNotFindUpdate:))]
         fn updater_did_not_find_update(&self, _updater: &NSObject) {
-            self.emit_event(EVENT_UPDATE_NOT_AVAILABLE, "{}");
+            self.emit(EVENT_UPDATE_NOT_AVAILABLE, &EmptyPayload {});
         }
 
         #[unsafe(method(updater:willDownloadUpdate:withRequest:))]
@@ -59,9 +58,9 @@ define_class!(
             item: &SPUAppcastItem,
             _request: &NSObject,
         ) {
-            let version = item.display_version_string().to_string();
-            let payload = serde_json::json!({ "version": version });
-            self.emit_event(EVENT_DOWNLOADING, &payload.to_string());
+            self.emit(EVENT_DOWNLOADING, &VersionInfo {
+                version: item.display_version_string().to_string(),
+            });
         }
 
         #[unsafe(method(updater:didDownloadUpdate:))]
@@ -70,9 +69,9 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            let version = item.display_version_string().to_string();
-            let payload = serde_json::json!({ "version": version });
-            self.emit_event(EVENT_DOWNLOADED, &payload.to_string());
+            self.emit(EVENT_DOWNLOADED, &VersionInfo {
+                version: item.display_version_string().to_string(),
+            });
         }
 
         #[unsafe(method(updater:willInstallUpdate:))]
@@ -81,30 +80,35 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            let version = item.display_version_string().to_string();
-            let payload = serde_json::json!({ "version": version });
-            self.emit_event(EVENT_INSTALLING, &payload.to_string());
+            self.emit(EVENT_INSTALLING, &VersionInfo {
+                version: item.display_version_string().to_string(),
+            });
         }
 
         #[unsafe(method(updater:didAbortWithError:))]
         fn updater_did_abort_with_error(
             &self,
             _updater: &NSObject,
-            error: &NSObject,
+            ns_error: &NSObject,
         ) {
-            let description: Retained<NSString> =
-                unsafe { msg_send![error, localizedDescription] };
-            let code: i64 = unsafe { objc2::msg_send![error, code] };
-            let domain: Retained<NSString> = unsafe { msg_send![error, domain] };
-            let payload = serde_json::json!({
-                "message": description.to_string(),
-                "code": code,
-                "domain": domain.to_string()
+            self.emit(EVENT_ERROR, &ErrorPayload {
+                message: nserror_description(ns_error),
+                code: unsafe { msg_send![ns_error, code] },
+                domain: nserror_domain(ns_error),
             });
-            self.emit_event(EVENT_ERROR, &payload.to_string());
         }
     }
 );
+
+fn nserror_description(error: &NSObject) -> String {
+    let desc: Retained<NSString> = unsafe { msg_send![error, localizedDescription] };
+    desc.to_string()
+}
+
+fn nserror_domain(error: &NSObject) -> String {
+    let domain: Retained<NSString> = unsafe { msg_send![error, domain] };
+    domain.to_string()
+}
 
 impl SparkleDelegate {
     pub fn new(mtm: MainThreadMarker) -> Retained<Self> {
@@ -119,9 +123,12 @@ impl SparkleDelegate {
         *self.ivars().emitter.borrow_mut() = Some(emitter);
     }
 
-    fn emit_event(&self, event: &str, payload: &str) {
+    fn emit<T: Serialize>(&self, event: &str, payload: &T) {
         if let Some(ref emitter) = *self.ivars().emitter.borrow() {
-            emitter(event, payload);
+            match serde_json::to_string(payload) {
+                Ok(json) => emitter(event, json),
+                Err(e) => error!("Failed to serialize event payload: {}", e),
+            }
         }
     }
 }

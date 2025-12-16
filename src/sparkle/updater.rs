@@ -70,8 +70,10 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
 
     let delegate = SparkleDelegate::new(mtm);
     let app_clone = app.clone();
-    delegate.set_emitter(Arc::new(move |event: &str, payload: &str| {
-        let _ = app_clone.emit(event, payload);
+    delegate.set_emitter(Arc::new(move |event: &str, payload: String| {
+        if let Err(e) = app_clone.emit(event, payload) {
+            log::error!("Failed to emit event {}: {}", event, e);
+        }
     }));
 
     let controller = unsafe {
@@ -110,28 +112,29 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
     }))
 }
 
+const PLIST_KEY_VALIDATIONS: &[(&str, &str)] = &[
+    (
+        "SUPublicEDKey",
+        "Sparkle will not be able to verify update signatures.",
+    ),
+    (
+        "SUFeedURL",
+        "You must set a feed URL before checking for updates.",
+    ),
+];
+
 fn check_info_plist_keys() {
     unsafe {
         let bundle = NSBundle::mainBundle();
         let info_dict: Option<Retained<NSDictionary>> = msg_send![&bundle, infoDictionary];
 
         if let Some(dict) = info_dict {
-            let key = NSString::from_str("SUPublicEDKey");
-            let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
-            if value.is_none() {
-                warn!(
-                    "SUPublicEDKey not found in Info.plist. \
-                     Sparkle will not be able to verify update signatures."
-                );
-            }
-
-            let key = NSString::from_str("SUFeedURL");
-            let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
-            if value.is_none() {
-                warn!(
-                    "SUFeedURL not found in Info.plist. \
-                     You must set a feed URL before checking for updates."
-                );
+            for (key_name, warning) in PLIST_KEY_VALIDATIONS {
+                let key = NSString::from_str(key_name);
+                let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
+                if value.is_none() {
+                    warn!("{} not found in Info.plist. {}", key_name, warning);
+                }
             }
         }
     }
@@ -150,30 +153,30 @@ unsafe impl<R: Runtime> Send for SparkleUpdater<R> {}
 unsafe impl<R: Runtime> Sync for SparkleUpdater<R> {}
 
 impl<R: Runtime> SparkleUpdater<R> {
-    pub fn check_for_updates(&self) -> Result<()> {
+    fn dispatch<T, F>(&self, f: F) -> T
+    where
+        T: Send,
+        F: FnOnce(&SPUStandardUpdaterController) -> T + Send,
+    {
         let ptr = self.controller_ptr;
         Queue::main().exec_sync(move || {
             let controller = unsafe { ptr.as_ref() };
-            controller.check_for_updates(None);
-        });
+            f(controller)
+        })
+    }
+
+    pub fn check_for_updates(&self) -> Result<()> {
+        self.dispatch(|c| c.check_for_updates(None));
         Ok(())
     }
 
     pub fn check_for_updates_in_background(&self) -> Result<()> {
-        let ptr = self.controller_ptr;
-        Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller.updater().check_for_updates_in_background();
-        });
+        self.dispatch(|c| c.updater().check_for_updates_in_background());
         Ok(())
     }
 
     pub fn can_check_for_updates(&self) -> Result<bool> {
-        let ptr = self.controller_ptr;
-        Ok(Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller.updater().can_check_for_updates()
-        }))
+        Ok(self.dispatch(|c| c.updater().can_check_for_updates()))
     }
 
     pub fn current_version(&self) -> Result<String> {
@@ -181,105 +184,60 @@ impl<R: Runtime> SparkleUpdater<R> {
     }
 
     pub fn feed_url(&self) -> Result<Option<String>> {
-        let ptr = self.controller_ptr;
-        Ok(Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            let url = controller.updater().feed_url();
-            match url {
-                Some(url) => {
-                    let abs_string: Option<Retained<NSString>> =
-                        unsafe { objc2::msg_send![&url, absoluteString] };
-                    abs_string.map(|s| s.to_string())
-                }
-                None => None,
-            }
+        Ok(self.dispatch(|c| {
+            c.updater().feed_url().and_then(|url| {
+                let abs: Option<Retained<NSString>> =
+                    unsafe { objc2::msg_send![&url, absoluteString] };
+                abs.map(|s| s.to_string())
+            })
         }))
     }
 
     pub fn set_feed_url(&self, url: &str) -> Result<()> {
         url::Url::parse(url).map_err(|_| Error::InvalidFeedUrl(url.to_string()))?;
-
         let url_string = url.to_string();
-        let ptr = self.controller_ptr;
 
-        let result: Result<()> = Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
+        self.dispatch(move |c| {
             let ns_string = NSString::from_str(&url_string);
             let ns_url: Option<Retained<NSURL>> =
                 unsafe { objc2::msg_send![NSURL::class(), URLWithString: &*ns_string] };
-
-            match ns_url {
-                Some(url) => {
-                    controller.updater().set_feed_url(Some(&url));
-                    Ok(())
-                }
-                None => Err(Error::InvalidFeedUrl(url_string)),
+            if let Some(url) = ns_url {
+                c.updater().set_feed_url(Some(&url));
             }
-        });
-
-        result
-    }
-
-    pub fn automatically_checks_for_updates(&self) -> Result<bool> {
-        let ptr = self.controller_ptr;
-        Ok(Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller.updater().automatically_checks_for_updates()
-        }))
-    }
-
-    pub fn set_automatically_checks_for_updates(&self, enabled: bool) -> Result<()> {
-        let ptr = self.controller_ptr;
-        Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller
-                .updater()
-                .set_automatically_checks_for_updates(enabled);
         });
         Ok(())
     }
 
+    pub fn automatically_checks_for_updates(&self) -> Result<bool> {
+        Ok(self.dispatch(|c| c.updater().automatically_checks_for_updates()))
+    }
+
+    pub fn set_automatically_checks_for_updates(&self, enabled: bool) -> Result<()> {
+        self.dispatch(|c| c.updater().set_automatically_checks_for_updates(enabled));
+        Ok(())
+    }
+
     pub fn automatically_downloads_updates(&self) -> Result<bool> {
-        let ptr = self.controller_ptr;
-        Ok(Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller.updater().automatically_downloads_updates()
-        }))
+        Ok(self.dispatch(|c| c.updater().automatically_downloads_updates()))
     }
 
     pub fn set_automatically_downloads_updates(&self, enabled: bool) -> Result<()> {
-        let ptr = self.controller_ptr;
-        Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller
-                .updater()
-                .set_automatically_downloads_updates(enabled);
-        });
+        self.dispatch(|c| c.updater().set_automatically_downloads_updates(enabled));
         Ok(())
     }
 
     /// Returns Unix timestamp in milliseconds. None if never checked.
     pub fn last_update_check_date(&self) -> Result<Option<f64>> {
-        let ptr = self.controller_ptr;
-        Ok(Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            let date = controller.updater().last_update_check_date();
-            match date {
-                Some(date) => {
-                    let seconds: f64 = unsafe { objc2::msg_send![&date, timeIntervalSince1970] };
-                    Some(seconds * 1000.0)
-                }
-                None => None,
-            }
+        Ok(self.dispatch(|c| {
+            c.updater().last_update_check_date().map(|date| {
+                let seconds: f64 = unsafe { objc2::msg_send![&date, timeIntervalSince1970] };
+                seconds * 1000.0
+            })
         }))
     }
 
     pub fn reset_update_cycle(&self) -> Result<()> {
-        let ptr = self.controller_ptr;
-        Queue::main().exec_sync(move || {
-            let controller = unsafe { ptr.as_ref() };
-            controller.updater().reset_update_cycle();
-        });
+        self.dispatch(|c| c.updater().reset_update_cycle());
         Ok(())
     }
 }

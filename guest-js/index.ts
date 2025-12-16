@@ -12,8 +12,8 @@ export interface VersionInfo {
 
 export interface UpdateError {
   message: string;
-  code?: number;
-  domain?: string;
+  code: number;
+  domain: string;
 }
 
 export type CheckingPayload = Record<string, never>;
@@ -83,30 +83,15 @@ export const Events = {
   ERROR: 'sparkle://error',
 } as const;
 
-export function onChecking(handler: (payload: CheckingPayload) => void): Promise<UnlistenFn> {
-  return listen<CheckingPayload>(Events.CHECKING, (event) => handler(event.payload));
+function createListener<T>(event: string) {
+  return (handler: (payload: T) => void): Promise<UnlistenFn> =>
+    listen<T>(event, (e) => handler(e.payload));
 }
 
-export function onUpdateAvailable(handler: (payload: UpdateAvailablePayload) => void): Promise<UnlistenFn> {
-  return listen<UpdateAvailablePayload>(Events.UPDATE_AVAILABLE, (event) => handler(event.payload));
-}
-
-export function onUpdateNotAvailable(handler: (payload: UpdateNotAvailablePayload) => void): Promise<UnlistenFn> {
-  return listen<UpdateNotAvailablePayload>(Events.UPDATE_NOT_AVAILABLE, (event) => handler(event.payload));
-}
-
-export function onDownloading(handler: (payload: DownloadingPayload) => void): Promise<UnlistenFn> {
-  return listen<DownloadingPayload>(Events.DOWNLOADING, (event) => handler(event.payload));
-}
-
-export function onDownloaded(handler: (payload: DownloadedPayload) => void): Promise<UnlistenFn> {
-  return listen<DownloadedPayload>(Events.DOWNLOADED, (event) => handler(event.payload));
-}
-
-export function onInstalling(handler: (payload: InstallingPayload) => void): Promise<UnlistenFn> {
-  return listen<InstallingPayload>(Events.INSTALLING, (event) => handler(event.payload));
-}
-
-export function onError(handler: (payload: ErrorPayload) => void): Promise<UnlistenFn> {
-  return listen<ErrorPayload>(Events.ERROR, (event) => handler(event.payload));
-}
+export const onChecking = createListener<CheckingPayload>(Events.CHECKING);
+export const onUpdateAvailable = createListener<UpdateAvailablePayload>(Events.UPDATE_AVAILABLE);
+export const onUpdateNotAvailable = createListener<UpdateNotAvailablePayload>(Events.UPDATE_NOT_AVAILABLE);
+export const onDownloading = createListener<DownloadingPayload>(Events.DOWNLOADING);
+export const onDownloaded = createListener<DownloadedPayload>(Events.DOWNLOADED);
+export const onInstalling = createListener<InstallingPayload>(Events.INSTALLING);
+export const onError = createListener<ErrorPayload>(Events.ERROR);
