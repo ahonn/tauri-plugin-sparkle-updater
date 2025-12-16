@@ -145,6 +145,7 @@
 
   .log {
     background: #1a1a1a;
+    color: #f6f6f6;
     padding: 12px;
     border-radius: 8px;
     font-family: monospace;

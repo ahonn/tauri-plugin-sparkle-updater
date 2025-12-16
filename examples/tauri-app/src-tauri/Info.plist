@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>SUFeedURL</key>
-    <string>https://example.com/appcast.xml</string>
+    <string>http://localhost:8787/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>YOUR_BASE64_ED25519_PUBLIC_KEY</string>
+    <string>WV/UDuFy1UI+UPuzoo5bDxkYLFM8QDMWmFTmYnuOckY=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
     <key>SUAutomaticallyUpdate</key>

@@ -37,3 +37,10 @@ Sparkle.framework/
 .envrc
 
 sparkle-bin/
+
+# Sparkle private keys (sensitive!)
+sparkle_private_key.txt
+**/sparkle_private_key.txt
+
+# Example app releases (large binary files)
+examples/tauri-app/server/releases/*.dmg
