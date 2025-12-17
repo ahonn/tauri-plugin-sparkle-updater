@@ -22,12 +22,25 @@ fn main() {
         .build();
 
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if target_os == "macos" {
+    if target_os == "macos" && !is_publish_verify() {
         setup_sparkle_framework();
     }
 }
 
-// OUT_DIR: <project>/src-tauri/target/<arch>/release/build/<crate>-<hash>/out
+fn is_publish_verify() -> bool {
+    if std::env::var("DOCS_RS").is_ok() {
+        return true;
+    }
+
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        if manifest_dir.contains("target/package/") {
+            return true;
+        }
+    }
+
+    false
+}
+
 fn find_src_tauri_from_out_dir() -> Option<String> {
     let out_dir = std::env::var("OUT_DIR").ok()?;
     let out_path = Path::new(&out_dir);

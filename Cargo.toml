@@ -1,8 +1,15 @@
 [package]
 name = "tauri-plugin-sparkle-updater"
 version = "0.1.0"
-authors = [ "You" ]
-description = ""
+description = "Tauri plugin for macOS app updates using the Sparkle framework"
+authors = ["ahonn <ahonn95@outlook.com>"]
+license = "MIT"
+repository = "https://github.com/ahonn/tauri-plugin-sparkle-updater"
+homepage = "https://github.com/ahonn/tauri-plugin-sparkle-updater"
+documentation = "https://docs.rs/tauri-plugin-sparkle-updater"
+readme = "README.md"
+keywords = ["tauri", "tauri-plugin", "sparkle", "updater", "macos"]
+categories = ["gui", "os::macos-apis"]
 edition = "2021"
 rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]

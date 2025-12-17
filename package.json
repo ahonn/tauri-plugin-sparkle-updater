@@ -1,8 +1,24 @@
 {
   "name": "tauri-plugin-sparkle-updater-api",
   "version": "0.1.0",
-  "author": "You",
-  "description": "",
+  "description": "Tauri plugin for macOS app updates using the Sparkle framework",
+  "author": "ahonn <ahonn95@outlook.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahonn/tauri-plugin-sparkle-updater.git"
+  },
+  "homepage": "https://github.com/ahonn/tauri-plugin-sparkle-updater#readme",
+  "bugs": {
+    "url": "https://github.com/ahonn/tauri-plugin-sparkle-updater/issues"
+  },
+  "keywords": [
+    "tauri",
+    "tauri-plugin",
+    "sparkle",
+    "updater",
+    "macos"
+  ],
   "type": "module",
   "types": "./dist-js/index.d.ts",
   "main": "./dist-js/index.cjs",
