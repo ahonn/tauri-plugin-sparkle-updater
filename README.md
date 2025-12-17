@@ -44,8 +44,7 @@ yarn add tauri-plugin-sparkle-updater-api
 ### 3. Download Sparkle framework
 
 ```bash
-# From the plugin directory
-./scripts/download-sparkle.sh
+curl -fsSL https://raw.githubusercontent.com/ahonn/tauri-plugin-sparkle-updater/main/scripts/download-sparkle.sh | bash
 ```
 
 Or download manually from [Sparkle releases](https://github.com/sparkle-project/Sparkle/releases).
