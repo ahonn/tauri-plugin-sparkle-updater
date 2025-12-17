@@ -1,5 +1,9 @@
 # tauri-plugin-sparkle-updater
 
+[![Crates.io Version](https://img.shields.io/crates/v/tauri-plugin-sparkle-updater)](https://crates.io/crates/tauri-plugin-sparkle-updater)
+[![npm Version](https://img.shields.io/npm/v/tauri-plugin-sparkle-updater-api)](https://www.npmjs.com/package/tauri-plugin-sparkle-updater-api)
+[![License](https://img.shields.io/crates/l/tauri-plugin-sparkle-updater)](LICENSE)
+
 A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) update framework for macOS applications.
 
 ## Features
@@ -24,10 +28,20 @@ A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) updat
 ```toml
 # src-tauri/Cargo.toml
 [target.'cfg(target_os = "macos")'.dependencies]
-tauri-plugin-sparkle-updater = { git = "https://github.com/ahonn/tauri-plugin-sparkle_updater" }
+tauri-plugin-sparkle-updater = "0.1"
 ```
 
-### 2. Download Sparkle framework
+### 2. Add the JavaScript dependency
+
+```bash
+npm install tauri-plugin-sparkle-updater-api
+# or
+pnpm add tauri-plugin-sparkle-updater-api
+# or
+yarn add tauri-plugin-sparkle-updater-api
+```
+
+### 3. Download Sparkle framework
 
 ```bash
 # From the plugin directory
@@ -36,7 +50,7 @@ tauri-plugin-sparkle-updater = { git = "https://github.com/ahonn/tauri-plugin-sp
 
 Or download manually from [Sparkle releases](https://github.com/sparkle-project/Sparkle/releases).
 
-### 3. Generate EdDSA keys
+### 4. Generate EdDSA keys
 
 ```bash
 # Using Sparkle's generate_keys tool (included after running download-sparkle.sh)
