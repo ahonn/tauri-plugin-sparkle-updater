@@ -104,6 +104,35 @@ export async function resetUpdateCycle(): Promise<void> {
   return invoke('plugin:sparkle-updater|reset_update_cycle');
 }
 
+/** Returns the update check interval in seconds. */
+export async function updateCheckInterval(): Promise<number> {
+  return invoke('plugin:sparkle-updater|update_check_interval');
+}
+
+/** Sets the update check interval in seconds. */
+export async function setUpdateCheckInterval(interval: number): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_update_check_interval', { interval });
+}
+
+/**
+ * Begins a "probing" check for updates which will not actually offer to update.
+ * The delegate methods `onDidFindValidUpdate` and `onDidNotFindUpdate` will be called.
+ * Useful for showing update availability badges in your UI.
+ */
+export async function checkForUpdateInformation(): Promise<void> {
+  return invoke('plugin:sparkle-updater|check_for_update_information');
+}
+
+/**
+ * Returns whether an update session is in progress.
+ * An update session is in progress when the appcast is being downloaded,
+ * an update is being downloaded, an update is being shown, update permission
+ * is being requested, or the installer is being started.
+ */
+export async function sessionInProgress(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|session_in_progress');
+}
+
 export const Events = {
   DID_FINISH_LOADING_APPCAST: 'sparkle://did-finish-loading-appcast',
   DID_FIND_VALID_UPDATE: 'sparkle://did-find-valid-update',

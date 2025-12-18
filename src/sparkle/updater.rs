@@ -240,4 +240,27 @@ impl<R: Runtime> SparkleUpdater<R> {
         self.dispatch(|c| c.updater().reset_update_cycle());
         Ok(())
     }
+
+    /// Returns the update check interval in seconds.
+    pub fn update_check_interval(&self) -> Result<f64> {
+        Ok(self.dispatch(|c| c.updater().update_check_interval()))
+    }
+
+    /// Sets the update check interval in seconds.
+    pub fn set_update_check_interval(&self, interval: f64) -> Result<()> {
+        self.dispatch(|c| c.updater().set_update_check_interval(interval));
+        Ok(())
+    }
+
+    /// Begins a "probing" check for updates which will not actually offer to update.
+    /// Useful for determining if an update is available without showing UI.
+    pub fn check_for_update_information(&self) -> Result<()> {
+        self.dispatch(|c| c.updater().check_for_update_information());
+        Ok(())
+    }
+
+    /// Returns whether an update session is in progress.
+    pub fn session_in_progress(&self) -> Result<bool> {
+        Ok(self.dispatch(|c| c.updater().session_in_progress()))
+    }
 }

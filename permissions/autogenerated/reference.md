@@ -16,6 +16,10 @@ Default permissions for the Sparkle updater plugin
 - `allow-set-automatically-downloads-updates`
 - `allow-last-update-check-date`
 - `allow-reset-update-cycle`
+- `allow-update-check-interval`
+- `allow-set-update-check-interval`
+- `allow-check-for-update-information`
+- `allow-session-in-progress`
 
 ## Permission Table
 

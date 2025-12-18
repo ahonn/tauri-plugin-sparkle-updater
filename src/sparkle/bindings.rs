@@ -78,6 +78,12 @@ impl SPUUpdater {
         #[unsafe(method(setUpdateCheckInterval:))]
         pub fn set_update_check_interval(&self, interval: f64);
 
+        #[unsafe(method(checkForUpdateInformation))]
+        pub fn check_for_update_information(&self);
+
+        #[unsafe(method(sessionInProgress))]
+        pub fn session_in_progress(&self) -> bool;
+
         #[unsafe(method(startUpdater:))]
         pub fn start_updater(&self, error: *mut *mut NSError) -> bool;
 

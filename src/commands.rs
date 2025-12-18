@@ -85,3 +85,26 @@ pub(crate) async fn last_update_check_date<R: Runtime>(app: AppHandle<R>) -> Res
 pub(crate) async fn reset_update_cycle<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     get_updater!(app).reset_update_cycle()
 }
+
+#[command]
+pub(crate) async fn update_check_interval<R: Runtime>(app: AppHandle<R>) -> Result<f64> {
+    get_updater!(app).update_check_interval()
+}
+
+#[command]
+pub(crate) async fn set_update_check_interval<R: Runtime>(
+    app: AppHandle<R>,
+    interval: f64,
+) -> Result<()> {
+    get_updater!(app).set_update_check_interval(interval)
+}
+
+#[command]
+pub(crate) async fn check_for_update_information<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+    get_updater!(app).check_for_update_information()
+}
+
+#[command]
+pub(crate) async fn session_in_progress<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).session_in_progress()
+}

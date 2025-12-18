@@ -3,6 +3,8 @@
   import {
     checkForUpdates,
     checkForUpdatesInBackground,
+    checkForUpdateInformation,
+    sessionInProgress,
     currentVersion,
     canCheckForUpdates,
     feedUrl,
@@ -73,6 +75,24 @@
     try {
       const url = await feedUrl()
       updateResponse(`Feed URL: ${url}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _checkForUpdateInformation() {
+    try {
+      await checkForUpdateInformation()
+      updateResponse('Probing check initiated (no UI)')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _sessionInProgress() {
+    try {
+      const inProgress = await sessionInProgress()
+      updateResponse(`Session in progress: ${inProgress}`)
     } catch (e) {
       updateResponse(`Error: ${e}`)
     }
@@ -183,6 +203,8 @@
   <div class="buttons">
     <button onclick={_checkForUpdates}>Check for Updates</button>
     <button onclick={_checkBackground}>Background Check</button>
+    <button onclick={_checkForUpdateInformation}>Probe Update (No UI)</button>
+    <button onclick={_sessionInProgress}>Session In Progress?</button>
     <button onclick={_getVersion}>Get Version</button>
     <button onclick={_canCheck}>Can Check?</button>
     <button onclick={_getFeedUrl}>Get Feed URL</button>
