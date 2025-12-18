@@ -16,13 +16,44 @@ export interface UpdateError {
   domain: string;
 }
 
-export type CheckingPayload = Record<string, never>;
-export type UpdateAvailablePayload = UpdateInfo;
-export type UpdateNotAvailablePayload = Record<string, never>;
-export type DownloadingPayload = VersionInfo;
-export type DownloadedPayload = VersionInfo;
-export type InstallingPayload = VersionInfo;
-export type ErrorPayload = UpdateError;
+export interface UpdateCycleInfo {
+  updateCheck: 'userInitiated' | 'background' | 'information';
+  error?: UpdateError;
+}
+
+export interface DownloadFailedInfo {
+  version: string;
+  error: UpdateError;
+}
+
+export interface UserChoiceInfo {
+  choice: 'skip' | 'install' | 'dismiss';
+  version: string;
+  stage: 'notDownloaded' | 'downloaded' | 'installing';
+}
+
+export interface ScheduleInfo {
+  delay: number;
+}
+
+export type DidFinishLoadingAppcastPayload = Record<string, never>;
+export type DidFindValidUpdatePayload = UpdateInfo;
+export type DidNotFindUpdatePayload = Record<string, never>;
+export type WillDownloadUpdatePayload = VersionInfo;
+export type DidDownloadUpdatePayload = VersionInfo;
+export type WillInstallUpdatePayload = VersionInfo;
+export type DidAbortWithErrorPayload = UpdateError;
+export type DidFinishUpdateCyclePayload = UpdateCycleInfo;
+export type FailedToDownloadUpdatePayload = DownloadFailedInfo;
+export type UserDidCancelDownloadPayload = Record<string, never>;
+export type WillExtractUpdatePayload = VersionInfo;
+export type DidExtractUpdatePayload = VersionInfo;
+export type WillRelaunchApplicationPayload = Record<string, never>;
+export type UserDidMakeChoicePayload = UserChoiceInfo;
+export type WillScheduleUpdateCheckPayload = ScheduleInfo;
+export type WillNotScheduleUpdateCheckPayload = Record<string, never>;
+export type ShouldPromptForPermissionPayload = Record<string, never>;
+export type WillInstallUpdateOnQuitPayload = VersionInfo;
 
 export async function checkForUpdates(): Promise<void> {
   return invoke('plugin:sparkle-updater|check_for_updates');
@@ -74,13 +105,24 @@ export async function resetUpdateCycle(): Promise<void> {
 }
 
 export const Events = {
-  CHECKING: 'sparkle://checking',
-  UPDATE_AVAILABLE: 'sparkle://update-available',
-  UPDATE_NOT_AVAILABLE: 'sparkle://update-not-available',
-  DOWNLOADING: 'sparkle://downloading',
-  DOWNLOADED: 'sparkle://downloaded',
-  INSTALLING: 'sparkle://installing',
-  ERROR: 'sparkle://error',
+  DID_FINISH_LOADING_APPCAST: 'sparkle://did-finish-loading-appcast',
+  DID_FIND_VALID_UPDATE: 'sparkle://did-find-valid-update',
+  DID_NOT_FIND_UPDATE: 'sparkle://did-not-find-update',
+  WILL_DOWNLOAD_UPDATE: 'sparkle://will-download-update',
+  DID_DOWNLOAD_UPDATE: 'sparkle://did-download-update',
+  WILL_INSTALL_UPDATE: 'sparkle://will-install-update',
+  DID_ABORT_WITH_ERROR: 'sparkle://did-abort-with-error',
+  DID_FINISH_UPDATE_CYCLE: 'sparkle://did-finish-update-cycle',
+  FAILED_TO_DOWNLOAD_UPDATE: 'sparkle://failed-to-download-update',
+  USER_DID_CANCEL_DOWNLOAD: 'sparkle://user-did-cancel-download',
+  WILL_EXTRACT_UPDATE: 'sparkle://will-extract-update',
+  DID_EXTRACT_UPDATE: 'sparkle://did-extract-update',
+  WILL_RELAUNCH_APPLICATION: 'sparkle://will-relaunch-application',
+  USER_DID_MAKE_CHOICE: 'sparkle://user-did-make-choice',
+  WILL_SCHEDULE_UPDATE_CHECK: 'sparkle://will-schedule-update-check',
+  WILL_NOT_SCHEDULE_UPDATE_CHECK: 'sparkle://will-not-schedule-update-check',
+  SHOULD_PROMPT_FOR_PERMISSION: 'sparkle://should-prompt-for-permission',
+  WILL_INSTALL_UPDATE_ON_QUIT: 'sparkle://will-install-update-on-quit',
 } as const;
 
 function createListener<T>(event: string) {
@@ -88,10 +130,21 @@ function createListener<T>(event: string) {
     listen<T>(event, (e) => handler(e.payload));
 }
 
-export const onChecking = createListener<CheckingPayload>(Events.CHECKING);
-export const onUpdateAvailable = createListener<UpdateAvailablePayload>(Events.UPDATE_AVAILABLE);
-export const onUpdateNotAvailable = createListener<UpdateNotAvailablePayload>(Events.UPDATE_NOT_AVAILABLE);
-export const onDownloading = createListener<DownloadingPayload>(Events.DOWNLOADING);
-export const onDownloaded = createListener<DownloadedPayload>(Events.DOWNLOADED);
-export const onInstalling = createListener<InstallingPayload>(Events.INSTALLING);
-export const onError = createListener<ErrorPayload>(Events.ERROR);
+export const onDidFinishLoadingAppcast = createListener<DidFinishLoadingAppcastPayload>(Events.DID_FINISH_LOADING_APPCAST);
+export const onDidFindValidUpdate = createListener<DidFindValidUpdatePayload>(Events.DID_FIND_VALID_UPDATE);
+export const onDidNotFindUpdate = createListener<DidNotFindUpdatePayload>(Events.DID_NOT_FIND_UPDATE);
+export const onWillDownloadUpdate = createListener<WillDownloadUpdatePayload>(Events.WILL_DOWNLOAD_UPDATE);
+export const onDidDownloadUpdate = createListener<DidDownloadUpdatePayload>(Events.DID_DOWNLOAD_UPDATE);
+export const onWillInstallUpdate = createListener<WillInstallUpdatePayload>(Events.WILL_INSTALL_UPDATE);
+export const onDidAbortWithError = createListener<DidAbortWithErrorPayload>(Events.DID_ABORT_WITH_ERROR);
+export const onDidFinishUpdateCycle = createListener<DidFinishUpdateCyclePayload>(Events.DID_FINISH_UPDATE_CYCLE);
+export const onFailedToDownloadUpdate = createListener<FailedToDownloadUpdatePayload>(Events.FAILED_TO_DOWNLOAD_UPDATE);
+export const onUserDidCancelDownload = createListener<UserDidCancelDownloadPayload>(Events.USER_DID_CANCEL_DOWNLOAD);
+export const onWillExtractUpdate = createListener<WillExtractUpdatePayload>(Events.WILL_EXTRACT_UPDATE);
+export const onDidExtractUpdate = createListener<DidExtractUpdatePayload>(Events.DID_EXTRACT_UPDATE);
+export const onWillRelaunchApplication = createListener<WillRelaunchApplicationPayload>(Events.WILL_RELAUNCH_APPLICATION);
+export const onUserDidMakeChoice = createListener<UserDidMakeChoicePayload>(Events.USER_DID_MAKE_CHOICE);
+export const onWillScheduleUpdateCheck = createListener<WillScheduleUpdateCheckPayload>(Events.WILL_SCHEDULE_UPDATE_CHECK);
+export const onWillNotScheduleUpdateCheck = createListener<WillNotScheduleUpdateCheckPayload>(Events.WILL_NOT_SCHEDULE_UPDATE_CHECK);
+export const onShouldPromptForPermission = createListener<ShouldPromptForPermissionPayload>(Events.SHOULD_PROMPT_FOR_PERMISSION);
+export const onWillInstallUpdateOnQuit = createListener<WillInstallUpdateOnQuitPayload>(Events.WILL_INSTALL_UPDATE_ON_QUIT);

@@ -1,12 +1,26 @@
 use serde::Serialize;
 
-pub const EVENT_CHECKING: &str = "sparkle://checking";
-pub const EVENT_UPDATE_AVAILABLE: &str = "sparkle://update-available";
-pub const EVENT_UPDATE_NOT_AVAILABLE: &str = "sparkle://update-not-available";
-pub const EVENT_DOWNLOADING: &str = "sparkle://downloading";
-pub const EVENT_DOWNLOADED: &str = "sparkle://downloaded";
-pub const EVENT_INSTALLING: &str = "sparkle://installing";
-pub const EVENT_ERROR: &str = "sparkle://error";
+// Existing events
+pub const EVENT_DID_FINISH_LOADING_APPCAST: &str = "sparkle://did-finish-loading-appcast";
+pub const EVENT_DID_FIND_VALID_UPDATE: &str = "sparkle://did-find-valid-update";
+pub const EVENT_DID_NOT_FIND_UPDATE: &str = "sparkle://did-not-find-update";
+pub const EVENT_WILL_DOWNLOAD_UPDATE: &str = "sparkle://will-download-update";
+pub const EVENT_DID_DOWNLOAD_UPDATE: &str = "sparkle://did-download-update";
+pub const EVENT_WILL_INSTALL_UPDATE: &str = "sparkle://will-install-update";
+pub const EVENT_DID_ABORT_WITH_ERROR: &str = "sparkle://did-abort-with-error";
+
+// New events
+pub const EVENT_DID_FINISH_UPDATE_CYCLE: &str = "sparkle://did-finish-update-cycle";
+pub const EVENT_FAILED_TO_DOWNLOAD_UPDATE: &str = "sparkle://failed-to-download-update";
+pub const EVENT_USER_DID_CANCEL_DOWNLOAD: &str = "sparkle://user-did-cancel-download";
+pub const EVENT_WILL_EXTRACT_UPDATE: &str = "sparkle://will-extract-update";
+pub const EVENT_DID_EXTRACT_UPDATE: &str = "sparkle://did-extract-update";
+pub const EVENT_WILL_RELAUNCH_APPLICATION: &str = "sparkle://will-relaunch-application";
+pub const EVENT_USER_DID_MAKE_CHOICE: &str = "sparkle://user-did-make-choice";
+pub const EVENT_WILL_SCHEDULE_UPDATE_CHECK: &str = "sparkle://will-schedule-update-check";
+pub const EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK: &str = "sparkle://will-not-schedule-update-check";
+pub const EVENT_SHOULD_PROMPT_FOR_PERMISSION: &str = "sparkle://should-prompt-for-permission";
+pub const EVENT_WILL_INSTALL_UPDATE_ON_QUIT: &str = "sparkle://will-install-update-on-quit";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,3 +44,32 @@ pub struct ErrorPayload {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct EmptyPayload {}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCycleInfo {
+    pub update_check: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<ErrorPayload>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadFailedInfo {
+    pub version: String,
+    pub error: ErrorPayload,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserChoiceInfo {
+    pub choice: String,
+    pub version: String,
+    pub stage: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleInfo {
+    pub delay: f64,
+}

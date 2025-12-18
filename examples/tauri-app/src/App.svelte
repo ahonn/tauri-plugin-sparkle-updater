@@ -6,9 +6,24 @@
     currentVersion,
     canCheckForUpdates,
     feedUrl,
-    onUpdateAvailable,
-    onUpdateNotAvailable,
-    onError
+    onDidFinishLoadingAppcast,
+    onDidFindValidUpdate,
+    onDidNotFindUpdate,
+    onWillDownloadUpdate,
+    onDidDownloadUpdate,
+    onWillInstallUpdate,
+    onDidAbortWithError,
+    onDidFinishUpdateCycle,
+    onFailedToDownloadUpdate,
+    onUserDidCancelDownload,
+    onWillExtractUpdate,
+    onDidExtractUpdate,
+    onWillRelaunchApplication,
+    onUserDidMakeChoice,
+    onWillScheduleUpdateCheck,
+    onWillNotScheduleUpdateCheck,
+    onShouldPromptForPermission,
+    onWillInstallUpdateOnQuit
   } from 'tauri-plugin-sparkle-updater-api'
 
   let response = $state('')
@@ -63,20 +78,79 @@
     }
   }
 
-  // Set up event listeners
   $effect(() => {
     const unlisteners = []
 
-    onUpdateAvailable((payload) => {
+    onDidFinishLoadingAppcast(() => {
+      updateResponse('Appcast loaded')
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onDidFindValidUpdate((payload) => {
       updateResponse(`Update available: ${JSON.stringify(payload)}`)
     }).then(unlisten => unlisteners.push(unlisten))
 
-    onUpdateNotAvailable(() => {
+    onDidNotFindUpdate(() => {
       updateResponse('No update available')
     }).then(unlisten => unlisteners.push(unlisten))
 
-    onError((payload) => {
-      updateResponse(`Update error: ${JSON.stringify(payload)}`)
+    onWillDownloadUpdate((payload) => {
+      updateResponse(`Will download: ${payload.version}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onDidDownloadUpdate((payload) => {
+      updateResponse(`Downloaded: ${payload.version}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillInstallUpdate((payload) => {
+      updateResponse(`Will install: ${payload.version}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onDidAbortWithError((payload) => {
+      updateResponse(`Error: ${payload.message}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onDidFinishUpdateCycle((payload) => {
+      updateResponse(`Update cycle finished: ${payload.updateCheck}${payload.error ? ` (error: ${payload.error.message})` : ''}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onFailedToDownloadUpdate((payload) => {
+      updateResponse(`Download failed: ${payload.version} - ${payload.error.message}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onUserDidCancelDownload(() => {
+      updateResponse('User cancelled download')
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillExtractUpdate((payload) => {
+      updateResponse(`Will extract: ${payload.version}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onDidExtractUpdate((payload) => {
+      updateResponse(`Extracted: ${payload.version}`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillRelaunchApplication(() => {
+      updateResponse('Will relaunch application')
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onUserDidMakeChoice((payload) => {
+      updateResponse(`User choice: ${payload.choice} for ${payload.version} (${payload.stage})`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillScheduleUpdateCheck((payload) => {
+      updateResponse(`Will schedule check in ${payload.delay}s`)
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillNotScheduleUpdateCheck(() => {
+      updateResponse('Will not schedule update check')
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onShouldPromptForPermission(() => {
+      updateResponse('Should prompt for permission')
+    }).then(unlisten => unlisteners.push(unlisten))
+
+    onWillInstallUpdateOnQuit((payload) => {
+      updateResponse(`Will install ${payload.version} on quit`)
     }).then(unlisten => unlisteners.push(unlisten))
 
     return () => {
