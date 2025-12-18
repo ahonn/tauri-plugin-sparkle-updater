@@ -160,6 +160,58 @@ export async function setHttpHeaders(headers: Record<string, string> | null): Pr
   return invoke('plugin:sparkle-updater|set_http_headers', { headers });
 }
 
+/**
+ * Returns the User-Agent string used for update requests.
+ * Default format: "AppName/1.0 Sparkle/2.x"
+ */
+export async function userAgentString(): Promise<string> {
+  return invoke('plugin:sparkle-updater|user_agent_string');
+}
+
+/**
+ * Sets a custom User-Agent string for update requests.
+ * Useful for analytics or debugging purposes.
+ *
+ * @param userAgent - The User-Agent string to use
+ */
+export async function setUserAgentString(userAgent: string): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_user_agent_string', { userAgent });
+}
+
+/**
+ * Returns whether the updater sends system profile information.
+ */
+export async function sendsSystemProfile(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|sends_system_profile');
+}
+
+/**
+ * Sets whether the updater should send system profile information.
+ * System profile includes basic hardware and OS information for analytics.
+ *
+ * @param sends - Whether to send system profile
+ */
+export async function setSendsSystemProfile(sends: boolean): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_sends_system_profile', { sends });
+}
+
+/**
+ * Clears the feed URL stored in user defaults.
+ * Returns the URL that was cleared, or null if no URL was stored.
+ */
+export async function clearFeedUrlFromUserDefaults(): Promise<string | null> {
+  return invoke('plugin:sparkle-updater|clear_feed_url_from_user_defaults');
+}
+
+/**
+ * Resets the update cycle after a short delay.
+ * Useful when settings change and you want to allow the user to undo
+ * before the next check happens.
+ */
+export async function resetUpdateCycleAfterShortDelay(): Promise<void> {
+  return invoke('plugin:sparkle-updater|reset_update_cycle_after_short_delay');
+}
+
 export const Events = {
   DID_FINISH_LOADING_APPCAST: 'sparkle://did-finish-loading-appcast',
   DID_FIND_VALID_UPDATE: 'sparkle://did-find-valid-update',

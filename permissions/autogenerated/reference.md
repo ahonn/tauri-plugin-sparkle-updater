@@ -22,6 +22,12 @@ Default permissions for the Sparkle updater plugin
 - `allow-session-in-progress`
 - `allow-http-headers`
 - `allow-set-http-headers`
+- `allow-user-agent-string`
+- `allow-set-user-agent-string`
+- `allow-sends-system-profile`
+- `allow-set-sends-system-profile`
+- `allow-clear-feed-url-from-user-defaults`
+- `allow-reset-update-cycle-after-short-delay`
 
 ## Permission Table
 

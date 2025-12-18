@@ -125,3 +125,43 @@ pub(crate) async fn set_http_headers<R: Runtime>(
 ) -> Result<()> {
     get_updater!(app).set_http_headers(headers)
 }
+
+#[command]
+pub(crate) async fn user_agent_string<R: Runtime>(app: AppHandle<R>) -> Result<String> {
+    get_updater!(app).user_agent_string()
+}
+
+#[command]
+pub(crate) async fn set_user_agent_string<R: Runtime>(
+    app: AppHandle<R>,
+    user_agent: String,
+) -> Result<()> {
+    get_updater!(app).set_user_agent_string(&user_agent)
+}
+
+#[command]
+pub(crate) async fn sends_system_profile<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).sends_system_profile()
+}
+
+#[command]
+pub(crate) async fn set_sends_system_profile<R: Runtime>(
+    app: AppHandle<R>,
+    sends: bool,
+) -> Result<()> {
+    get_updater!(app).set_sends_system_profile(sends)
+}
+
+#[command]
+pub(crate) async fn clear_feed_url_from_user_defaults<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>> {
+    get_updater!(app).clear_feed_url_from_user_defaults()
+}
+
+#[command]
+pub(crate) async fn reset_update_cycle_after_short_delay<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<()> {
+    get_updater!(app).reset_update_cycle_after_short_delay()
+}

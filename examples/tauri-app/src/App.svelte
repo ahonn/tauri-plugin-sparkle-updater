@@ -7,6 +7,12 @@
     sessionInProgress,
     httpHeaders,
     setHttpHeaders,
+    userAgentString,
+    setUserAgentString,
+    sendsSystemProfile,
+    setSendsSystemProfile,
+    clearFeedUrlFromUserDefaults,
+    resetUpdateCycleAfterShortDelay,
     currentVersion,
     canCheckForUpdates,
     feedUrl,
@@ -125,6 +131,61 @@
     try {
       await setHttpHeaders(null)
       updateResponse('HTTP headers cleared')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getUserAgent() {
+    try {
+      const ua = await userAgentString()
+      updateResponse(`User-Agent: ${ua}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _setCustomUserAgent() {
+    try {
+      await setUserAgentString('CustomApp/1.0 (TestBuild)')
+      updateResponse('Custom User-Agent set')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getSendsProfile() {
+    try {
+      const sends = await sendsSystemProfile()
+      updateResponse(`Sends system profile: ${sends}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _toggleSendsProfile() {
+    try {
+      const current = await sendsSystemProfile()
+      await setSendsSystemProfile(!current)
+      updateResponse(`Sends system profile toggled to: ${!current}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _clearFeedUrl() {
+    try {
+      const cleared = await clearFeedUrlFromUserDefaults()
+      updateResponse(`Cleared feed URL: ${cleared ?? 'none'}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _resetCycleDelayed() {
+    try {
+      await resetUpdateCycleAfterShortDelay()
+      updateResponse('Reset update cycle scheduled')
     } catch (e) {
       updateResponse(`Error: ${e}`)
     }
@@ -249,6 +310,12 @@
     <button onclick={_getHttpHeaders}>Get HTTP Headers</button>
     <button onclick={_setTestHeaders}>Set Test Headers</button>
     <button onclick={_clearHttpHeaders}>Clear Headers</button>
+    <button onclick={_getUserAgent}>Get User Agent</button>
+    <button onclick={_setCustomUserAgent}>Set Custom UA</button>
+    <button onclick={_getSendsProfile}>Sends Profile?</button>
+    <button onclick={_toggleSendsProfile}>Toggle Profile</button>
+    <button onclick={_clearFeedUrl}>Clear Feed URL</button>
+    <button onclick={_resetCycleDelayed}>Reset Cycle Delayed</button>
   </div>
 
   <div class="response">

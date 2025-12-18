@@ -90,6 +90,24 @@ impl SPUUpdater {
         #[unsafe(method(setHttpHeaders:))]
         pub fn set_http_headers(&self, headers: Option<&NSDictionary<NSString, NSString>>);
 
+        #[unsafe(method(userAgentString))]
+        pub fn user_agent_string(&self) -> Retained<NSString>;
+
+        #[unsafe(method(setUserAgentString:))]
+        pub fn set_user_agent_string(&self, user_agent: &NSString);
+
+        #[unsafe(method(sendsSystemProfile))]
+        pub fn sends_system_profile(&self) -> bool;
+
+        #[unsafe(method(setSendsSystemProfile:))]
+        pub fn set_sends_system_profile(&self, sends: bool);
+
+        #[unsafe(method(clearFeedURLFromUserDefaults))]
+        pub fn clear_feed_url_from_user_defaults(&self) -> Option<Retained<NSURL>>;
+
+        #[unsafe(method(resetUpdateCycleAfterShortDelay))]
+        pub fn reset_update_cycle_after_short_delay(&self);
+
         #[unsafe(method(startUpdater:))]
         pub fn start_updater(&self, error: *mut *mut NSError) -> bool;
 

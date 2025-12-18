@@ -304,4 +304,49 @@ impl<R: Runtime> SparkleUpdater<R> {
         });
         Ok(())
     }
+
+    /// Returns the User-Agent string used for update requests.
+    pub fn user_agent_string(&self) -> Result<String> {
+        Ok(self.dispatch(|c| c.updater().user_agent_string().to_string()))
+    }
+
+    /// Sets a custom User-Agent string for update requests.
+    pub fn set_user_agent_string(&self, user_agent: &str) -> Result<()> {
+        let ua = user_agent.to_string();
+        self.dispatch(move |c| {
+            let ns_string = NSString::from_str(&ua);
+            c.updater().set_user_agent_string(&ns_string);
+        });
+        Ok(())
+    }
+
+    /// Returns whether the updater sends system profile information.
+    pub fn sends_system_profile(&self) -> Result<bool> {
+        Ok(self.dispatch(|c| c.updater().sends_system_profile()))
+    }
+
+    /// Sets whether the updater should send system profile information.
+    pub fn set_sends_system_profile(&self, sends: bool) -> Result<()> {
+        self.dispatch(|c| c.updater().set_sends_system_profile(sends));
+        Ok(())
+    }
+
+    /// Clears the feed URL stored in user defaults.
+    /// Returns the URL that was cleared, or None if no URL was stored.
+    pub fn clear_feed_url_from_user_defaults(&self) -> Result<Option<String>> {
+        Ok(self.dispatch(|c| {
+            c.updater().clear_feed_url_from_user_defaults().and_then(|url| {
+                let abs: Option<Retained<NSString>> =
+                    unsafe { objc2::msg_send![&url, absoluteString] };
+                abs.map(|s| s.to_string())
+            })
+        }))
+    }
+
+    /// Resets the update cycle after a short delay.
+    /// Useful when settings change and you want to allow the user to undo.
+    pub fn reset_update_cycle_after_short_delay(&self) -> Result<()> {
+        self.dispatch(|c| c.updater().reset_update_cycle_after_short_delay());
+        Ok(())
+    }
 }
