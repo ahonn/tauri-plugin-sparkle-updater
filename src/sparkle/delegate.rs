@@ -6,7 +6,7 @@ use log::error;
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
 use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
-use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSSet, NSString, NSURL};
+use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSNumber, NSSet, NSString, NSURL};
 use serde::Serialize;
 
 use super::bindings::SPUAppcastItem;
@@ -65,6 +65,10 @@ define_class!(
                 abs.map(|s| s.to_string()).unwrap_or_default()
             };
 
+            let number_to_f64 = |num: &NSNumber| -> f64 {
+                unsafe { msg_send![num, doubleValue] }
+            };
+
             let update_info = UpdateInfo {
                 version: item.display_version_string().to_string(),
                 release_notes: item.item_description().map(|s| s.to_string()),
@@ -80,6 +84,16 @@ define_class!(
                 is_critical: item.is_critical_update(),
                 is_major_upgrade: item.is_major_upgrade(),
                 is_information_only: item.is_information_only_update(),
+                maximum_system_version: item.maximum_system_version().map(|s| s.to_string()),
+                minimum_os_version_ok: item.minimum_operating_system_version_is_ok(),
+                maximum_os_version_ok: item.maximum_operating_system_version_is_ok(),
+                installation_type: item.installation_type().to_string(),
+                phased_rollout_interval: item.phased_rollout_interval().map(|n| number_to_f64(&n)),
+                full_release_notes_url: item.full_release_notes_url().map(|u| url_to_string(&u)),
+                minimum_autoupdate_version: item.minimum_autoupdate_version().map(|s| s.to_string()),
+                ignore_skipped_upgrades_below_version: item.ignore_skipped_upgrades_below_version().map(|s| s.to_string()),
+                date_string: item.date_string().map(|s| s.to_string()),
+                item_description_format: item.item_description_format().map(|s| s.to_string()),
             };
 
             *self.ivars().last_found_update.borrow_mut() = Some(update_info.clone());

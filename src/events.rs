@@ -35,12 +35,28 @@ pub struct UpdateInfo {
     pub minimum_system_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub channel: Option<String>,
-    /// Unix timestamp in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<f64>,
     pub is_critical: bool,
     pub is_major_upgrade: bool,
     pub is_information_only: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_system_version: Option<String>,
+    pub minimum_os_version_ok: bool,
+    pub maximum_os_version_ok: bool,
+    pub installation_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phased_rollout_interval: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full_release_notes_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_autoupdate_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ignore_skipped_upgrades_below_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date_string: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_description_format: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -9,11 +9,20 @@ export interface UpdateInfo {
   infoUrl?: string;
   minimumSystemVersion?: string;
   channel?: string;
-  /** Unix timestamp in milliseconds */
   date?: number;
   isCritical: boolean;
   isMajorUpgrade: boolean;
   isInformationOnly: boolean;
+  maximumSystemVersion?: string;
+  minimumOsVersionOk: boolean;
+  maximumOsVersionOk: boolean;
+  installationType: string;
+  phasedRolloutInterval?: number;
+  fullReleaseNotesUrl?: string;
+  minimumAutoupdateVersion?: string;
+  ignoreSkippedUpgradesBelowVersion?: string;
+  dateString?: string;
+  itemDescriptionFormat?: string;
 }
 
 export interface VersionInfo {
