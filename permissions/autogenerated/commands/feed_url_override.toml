@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-feed-url-override"
+description = "Enables the feed_url_override command without any pre-configured scope."
+commands.allow = ["feed_url_override"]
+
+[[permission]]
+identifier = "deny-feed-url-override"
+description = "Denies the feed_url_override command without any pre-configured scope."
+commands.deny = ["feed_url_override"]

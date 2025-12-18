@@ -8,6 +8,7 @@ use objc2::runtime::NSObject;
 use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
 use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSNumber, NSSet, NSString, NSURL};
 use serde::Serialize;
+use serde_json::Value;
 
 use super::bindings::SPUAppcastItem;
 use crate::events::UpdateInfo;
@@ -22,7 +23,7 @@ use crate::events::{
     EVENT_WILL_SCHEDULE_UPDATE_CHECK,
 };
 
-pub type EventEmitter = Arc<dyn Fn(&str, String) + Send + Sync>;
+pub type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
 pub struct DelegateIvars {
     emitter: RefCell<Option<EventEmitter>>,
@@ -413,8 +414,8 @@ impl SparkleDelegate {
 
     fn emit<T: Serialize>(&self, event: &str, payload: &T) {
         if let Some(ref emitter) = *self.ivars().emitter.borrow() {
-            match serde_json::to_string(payload) {
-                Ok(json) => emitter(event, json),
+            match serde_json::to_value(payload) {
+                Ok(value) => emitter(event, value),
                 Err(e) => error!("Failed to serialize event payload: {}", e),
             }
         }

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-update-check-interval"
+description = "Enables the set_update_check_interval command without any pre-configured scope."
+commands.allow = ["set_update_check_interval"]
+
+[[permission]]
+identifier = "deny-set-update-check-interval"
+description = "Denies the set_update_check_interval command without any pre-configured scope."
+commands.deny = ["set_update_check_interval"]

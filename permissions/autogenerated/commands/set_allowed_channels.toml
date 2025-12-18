@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-allowed-channels"
+description = "Enables the set_allowed_channels command without any pre-configured scope."
+commands.allow = ["set_allowed_channels"]
+
+[[permission]]
+identifier = "deny-set-allowed-channels"
+description = "Denies the set_allowed_channels command without any pre-configured scope."
+commands.deny = ["set_allowed_channels"]

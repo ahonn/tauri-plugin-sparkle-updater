@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-reset-update-cycle-after-short-delay"
+description = "Enables the reset_update_cycle_after_short_delay command without any pre-configured scope."
+commands.allow = ["reset_update_cycle_after_short_delay"]
+
+[[permission]]
+identifier = "deny-reset-update-cycle-after-short-delay"
+description = "Denies the reset_update_cycle_after_short_delay command without any pre-configured scope."
+commands.deny = ["reset_update_cycle_after_short_delay"]

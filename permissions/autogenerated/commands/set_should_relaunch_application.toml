@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-should-relaunch-application"
+description = "Enables the set_should_relaunch_application command without any pre-configured scope."
+commands.allow = ["set_should_relaunch_application"]
+
+[[permission]]
+identifier = "deny-set-should-relaunch-application"
+description = "Denies the set_should_relaunch_application command without any pre-configured scope."
+commands.deny = ["set_should_relaunch_application"]

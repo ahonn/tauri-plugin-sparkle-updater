@@ -72,7 +72,7 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
 
     let delegate = SparkleDelegate::new(mtm);
     let app_clone = app.clone();
-    delegate.set_emitter(Arc::new(move |event: &str, payload: String| {
+    delegate.set_emitter(Arc::new(move |event: &str, payload: serde_json::Value| {
         if let Err(e) = app_clone.emit(event, payload) {
             log::error!("Failed to emit event {}: {}", event, e);
         }

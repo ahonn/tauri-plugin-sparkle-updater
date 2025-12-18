@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-should-proceed-with-update"
+description = "Enables the should_proceed_with_update command without any pre-configured scope."
+commands.allow = ["should_proceed_with_update"]
+
+[[permission]]
+identifier = "deny-should-proceed-with-update"
+description = "Denies the should_proceed_with_update command without any pre-configured scope."
+commands.deny = ["should_proceed_with_update"]

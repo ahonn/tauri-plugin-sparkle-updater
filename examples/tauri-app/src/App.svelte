@@ -1,5 +1,4 @@
 <script>
-  import Greet from './lib/Greet.svelte'
   import {
     checkForUpdates,
     checkForUpdatesInBackground,
@@ -438,49 +437,56 @@
   })
 </script>
 
-<main class="container">
-  <h1>Sparkle Updater Demo</h1>
+<h1>Sparkle Updater Demo</h1>
 
-  <div class="row">
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-
-  <p>Test the Sparkle Updater plugin:</p>
-
-  <div class="row">
-    <Greet />
-  </div>
-
+<section>
+  <h4>Update Actions</h4>
   <div class="buttons">
     <button onclick={_checkForUpdates}>Check for Updates</button>
     <button onclick={_checkBackground}>Background Check</button>
-    <button onclick={_checkForUpdateInformation}>Probe Update (No UI)</button>
+    <button onclick={_checkForUpdateInformation}>Probe Update</button>
+  </div>
+</section>
+
+<section>
+  <h4>Status & Info</h4>
+  <div class="buttons">
     <button onclick={_sessionInProgress}>Session In Progress?</button>
     <button onclick={_getVersion}>Get Version</button>
     <button onclick={_canCheck}>Can Check?</button>
+    <button onclick={_getLastFoundUpdate}>Last Update</button>
+  </div>
+</section>
+
+<section>
+  <h4>Feed Configuration</h4>
+  <div class="buttons">
     <button onclick={_getFeedUrl}>Get Feed URL</button>
-    <button onclick={_getHttpHeaders}>Get HTTP Headers</button>
-    <button onclick={_setTestHeaders}>Set Test Headers</button>
-    <button onclick={_clearHttpHeaders}>Clear Headers</button>
-    <button onclick={_getUserAgent}>Get User Agent</button>
-    <button onclick={_setCustomUserAgent}>Set Custom UA</button>
-    <button onclick={_getSendsProfile}>Sends Profile?</button>
-    <button onclick={_toggleSendsProfile}>Toggle Profile</button>
     <button onclick={_clearFeedUrl}>Clear Feed URL</button>
-    <button onclick={_resetCycleDelayed}>Reset Cycle Delayed</button>
+    <button onclick={_getFeedUrlOverride}>Feed Override</button>
     <button onclick={_getAllowedChannels}>Get Channels</button>
     <button onclick={_setTestChannels}>Set Channels</button>
-    <button onclick={_getFeedUrlOverride}>Feed Override</button>
-    <button onclick={_getFeedParams}>Get Feed Params</button>
-    <button onclick={_setTestFeedParams}>Set Feed Params</button>
+    <button onclick={_getFeedParams}>Get Params</button>
+    <button onclick={_setTestFeedParams}>Set Params</button>
+  </div>
+</section>
+
+<section>
+  <h4>HTTP Settings</h4>
+  <div class="buttons">
+    <button onclick={_getHttpHeaders}>Get Headers</button>
+    <button onclick={_setTestHeaders}>Set Headers</button>
+    <button onclick={_clearHttpHeaders}>Clear Headers</button>
+    <button onclick={_getUserAgent}>Get UA</button>
+    <button onclick={_setCustomUserAgent}>Set UA</button>
+    <button onclick={_getSendsProfile}>Sends Profile?</button>
+    <button onclick={_toggleSendsProfile}>Toggle Profile</button>
+  </div>
+</section>
+
+<section>
+  <h4>Update Behavior</h4>
+  <div class="buttons">
     <button onclick={_getDownloadNotes}>Download Notes?</button>
     <button onclick={_toggleDownloadNotes}>Toggle Notes</button>
     <button onclick={_getRelaunch}>Relaunch?</button>
@@ -489,47 +495,16 @@
     <button onclick={_toggleMayCheck}>Toggle May Check</button>
     <button onclick={_getShouldProceed}>Proceed?</button>
     <button onclick={_toggleShouldProceed}>Toggle Proceed</button>
+  </div>
+</section>
+
+<section>
+  <h4>Other</h4>
+  <div class="buttons">
+    <button onclick={_resetCycleDelayed}>Reset Cycle</button>
     <button onclick={_getDecryptionPassword}>Get Password</button>
-    <button onclick={_getLastFoundUpdate}>Last Update</button>
   </div>
+</section>
 
-  <div class="response">
-    <h3>Response:</h3>
-    <div class="log">{@html response}</div>
-  </div>
-
-</main>
-
-<style>
-  .logo.vite:hover {
-    filter: drop-shadow(0 0 2em #747bff);
-  }
-
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00);
-  }
-
-  .buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin: 16px 0;
-  }
-
-  .response {
-    margin-top: 16px;
-    text-align: left;
-  }
-
-  .log {
-    background: #1a1a1a;
-    color: #f6f6f6;
-    padding: 12px;
-    border-radius: 8px;
-    font-family: monospace;
-    font-size: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-</style>
+<h3>Log</h3>
+<div class="log">{@html response}</div>

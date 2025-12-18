@@ -1,7 +1,10 @@
 {
   "tauri-app_0.2.0_aarch64.dmg": {
     "version": "0.2.0",
-    "signature": "OJfDOKSU5l+mN/mlxj9JeQAprZXkerhTltRTrnqjlfCaKDBp4qS+HrRmB/++UtVVHAEVS4mkFhf8Gu1o+x3wCA==",
-    "length": 4394522
+    "signature": "BHyk0rgD1fl3os6P7mutsd5mCVHi0QfvaYeBeHuix7WqaTvcJdyS83ubbbNFhtqIaWc273NnyknIOjqbdSTkDw==",
+    "length": 4572775,
+    "title": "Security Update",
+    "releaseNotes": "<h2>What's New in 0.2.0</h2><ul><li>Critical security fixes</li><li>Performance improvements</li><li>Bug fixes</li></ul>",
+    "minimumSystemVersion": "11.0"
   }
 }

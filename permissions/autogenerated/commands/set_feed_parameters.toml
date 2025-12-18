@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-feed-parameters"
+description = "Enables the set_feed_parameters command without any pre-configured scope."
+commands.allow = ["set_feed_parameters"]
+
+[[permission]]
+identifier = "deny-set-feed-parameters"
+description = "Denies the set_feed_parameters command without any pre-configured scope."
+commands.deny = ["set_feed_parameters"]

@@ -13,14 +13,36 @@ interface ReleaseConfig {
   signature: string;
   fileSize: number;
   filename: string;
+  title?: string;
+  releaseNotes?: string;
+  releaseNotesUrl?: string;
+  infoUrl?: string;
+  minimumSystemVersion: string;
+  maximumSystemVersion?: string;
+  channel?: string;
+  isCritical: boolean;
+  isMajorUpgrade: boolean;
+  phasedRolloutInterval?: number;
+}
+
+interface ReleaseEntry {
+  version: string;
+  signature: string;
+  length: number;
+  title?: string;
+  releaseNotes?: string;
+  releaseNotesUrl?: string;
+  infoUrl?: string;
+  minimumSystemVersion?: string;
+  maximumSystemVersion?: string;
+  channel?: string;
+  isCritical?: boolean;
+  isMajorUpgrade?: boolean;
+  phasedRolloutInterval?: number;
 }
 
 interface ReleasesJson {
-  [filename: string]: {
-    version: string;
-    signature: string;
-    length: number;
-  };
+  [filename: string]: ReleaseEntry;
 }
 
 function loadReleasesConfig(): ReleasesJson {
@@ -59,7 +81,7 @@ function findLatestRelease(): ReleaseConfig | null {
   const filePath = join(RELEASES_DIR, latestFile);
   const stats = statSync(filePath);
 
-  // Load signature from releases.json or environment variable
+  // Load config from releases.json or environment variable
   const releasesConfig = loadReleasesConfig();
   const fileConfig = releasesConfig[latestFile];
   const signature = fileConfig?.signature || process.env.ED_SIGNATURE || "";
@@ -69,11 +91,53 @@ function findLatestRelease(): ReleaseConfig | null {
     signature,
     fileSize: stats.size,
     filename: latestFile,
+    title: fileConfig?.title,
+    releaseNotes: fileConfig?.releaseNotes,
+    releaseNotesUrl: fileConfig?.releaseNotesUrl,
+    infoUrl: fileConfig?.infoUrl,
+    minimumSystemVersion: fileConfig?.minimumSystemVersion || "11.0",
+    maximumSystemVersion: fileConfig?.maximumSystemVersion,
+    channel: fileConfig?.channel,
+    isCritical: fileConfig?.isCritical || false,
+    isMajorUpgrade: fileConfig?.isMajorUpgrade || false,
+    phasedRolloutInterval: fileConfig?.phasedRolloutInterval,
   };
 }
 
 function generateAppcast(config: ReleaseConfig): string {
   const pubDate = new Date().toUTCString();
+  const title = config.title || `Version ${config.version}`;
+  const releaseNotes = config.releaseNotes || `<h2>What's New in ${config.version}</h2><ul><li>Bug fixes and improvements</li></ul>`;
+
+  // Build optional Sparkle elements
+  const optionalElements: string[] = [];
+
+  if (config.channel) {
+    optionalElements.push(`      <sparkle:channel>${config.channel}</sparkle:channel>`);
+  }
+  if (config.isCritical) {
+    optionalElements.push(`      <sparkle:criticalUpdate />`);
+  }
+  if (config.isMajorUpgrade) {
+    optionalElements.push(`      <sparkle:majorUpgrade />`);
+  }
+  if (config.maximumSystemVersion) {
+    optionalElements.push(`      <sparkle:maximumSystemVersion>${config.maximumSystemVersion}</sparkle:maximumSystemVersion>`);
+  }
+  if (config.infoUrl) {
+    optionalElements.push(`      <sparkle:informationalUpdate />`);
+    optionalElements.push(`      <link>${config.infoUrl}</link>`);
+  }
+  if (config.releaseNotesUrl) {
+    optionalElements.push(`      <sparkle:releaseNotesLink>${config.releaseNotesUrl}</sparkle:releaseNotesLink>`);
+  }
+  if (config.phasedRolloutInterval) {
+    optionalElements.push(`      <sparkle:phasedRolloutInterval>${config.phasedRolloutInterval}</sparkle:phasedRolloutInterval>`);
+  }
+
+  const optionalElementsStr = optionalElements.length > 0
+    ? '\n' + optionalElements.join('\n')
+    : '';
 
   return `<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -83,10 +147,10 @@ function generateAppcast(config: ReleaseConfig): string {
     <description>Appcast for Tauri App</description>
     <language>en</language>
     <item>
-      <title>Version ${config.version}</title>
+      <title>${title}</title>
       <sparkle:version>${config.version}</sparkle:version>
       <sparkle:shortVersionString>${config.version}</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <sparkle:minimumSystemVersion>${config.minimumSystemVersion}</sparkle:minimumSystemVersion>${optionalElementsStr}
       <pubDate>${pubDate}</pubDate>
       <enclosure
         url="http://localhost:${PORT}/releases/${config.filename}"
@@ -94,13 +158,7 @@ function generateAppcast(config: ReleaseConfig): string {
         length="${config.fileSize}"
         type="application/octet-stream"
       />
-      <description><![CDATA[
-        <h2>What's New in ${config.version}</h2>
-        <ul>
-          <li>Test update release</li>
-          <li>Bug fixes and improvements</li>
-        </ul>
-      ]]></description>
+      <description><![CDATA[${releaseNotes}]]></description>
     </item>
   </channel>
 </rss>`;
@@ -120,7 +178,14 @@ function generateNoUpdateAppcast(): string {
 
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   const url = req.url || "/";
-  console.log(`${req.method} ${url}`);
+  const timestamp = new Date().toISOString();
+
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`[${timestamp}] ${req.method} ${url}`);
+  console.log(`Request Headers:`);
+  Object.entries(req.headers).forEach(([key, value]) => {
+    console.log(`  ${key}: ${value}`);
+  });
 
   // Handle appcast.xml request
   if (url === "/appcast.xml") {
@@ -134,13 +199,20 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
           "Warning: ED_SIGNATURE environment variable not set. Update verification may fail."
         );
       }
+      const appcastXml = generateAppcast(release);
       res.statusCode = 200;
-      res.end(generateAppcast(release));
-      console.log(`Serving appcast for version ${release.version}`);
+      res.end(appcastXml);
+      console.log(`\nResponse: 200 OK`);
+      console.log(`Response Headers:`);
+      console.log(`  Content-Type: application/xml; charset=utf-8`);
+      console.log(`\nResponse Body (appcast.xml):`);
+      console.log(appcastXml);
     } else {
+      const emptyAppcast = generateNoUpdateAppcast();
       res.statusCode = 200;
-      res.end(generateNoUpdateAppcast());
-      console.log("No releases found, serving empty appcast");
+      res.end(emptyAppcast);
+      console.log(`\nResponse: 200 OK (no releases found)`);
+      console.log(emptyAppcast);
     }
     return;
   }
@@ -153,7 +225,8 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     if (!existsSync(filePath)) {
       res.statusCode = 404;
       res.end("File not found");
-      console.log(`File not found: ${filename}`);
+      console.log(`\nResponse: 404 Not Found`);
+      console.log(`  File not found: ${filename}`);
       return;
     }
 
@@ -166,9 +239,18 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     );
     res.statusCode = 200;
 
+    console.log(`\nResponse: 200 OK`);
+    console.log(`Response Headers:`);
+    console.log(`  Content-Type: application/octet-stream`);
+    console.log(`  Content-Length: ${stats.size}`);
+    console.log(`  Content-Disposition: attachment; filename="${filename}"`);
+    console.log(`\nStreaming file: ${filename} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+
     const stream = createReadStream(filePath);
     stream.pipe(res);
-    console.log(`Serving file: ${filename} (${stats.size} bytes)`);
+    stream.on("end", () => {
+      console.log(`  File transfer complete: ${filename}`);
+    });
     return;
   }
 
@@ -211,9 +293,16 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
       ? `
   <ul>
     <li><strong>Version:</strong> ${release.version}</li>
+    <li><strong>Title:</strong> ${release.title || '<span style="color:gray">(default)</span>'}</li>
     <li><strong>File:</strong> ${release.filename}</li>
     <li><strong>Size:</strong> ${(release.fileSize / 1024 / 1024).toFixed(2)} MB</li>
     <li><strong>Signature:</strong> ${release.signature ? "Set" : '<span style="color:red">Not set (ED_SIGNATURE)</span>'}</li>
+    <li><strong>Channel:</strong> ${release.channel || '<span style="color:gray">(none)</span>'}</li>
+    <li><strong>Critical:</strong> ${release.isCritical ? '<span style="color:red">Yes</span>' : 'No'}</li>
+    <li><strong>Major Upgrade:</strong> ${release.isMajorUpgrade ? '<span style="color:orange">Yes</span>' : 'No'}</li>
+    <li><strong>Min System:</strong> ${release.minimumSystemVersion}</li>
+    <li><strong>Max System:</strong> ${release.maximumSystemVersion || '<span style="color:gray">(none)</span>'}</li>
+    <li><strong>Phased Rollout:</strong> ${release.phasedRolloutInterval ? release.phasedRolloutInterval + 's' : '<span style="color:gray">(disabled)</span>'}</li>
   </ul>
   `
       : '<p style="color:orange">No releases found in <code>releases/</code> directory</p>'

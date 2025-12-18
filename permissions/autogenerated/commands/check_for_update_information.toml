@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-check-for-update-information"
+description = "Enables the check_for_update_information command without any pre-configured scope."
+commands.allow = ["check_for_update_information"]
+
+[[permission]]
+identifier = "deny-check-for-update-information"
+description = "Denies the check_for_update_information command without any pre-configured scope."
+commands.deny = ["check_for_update_information"]

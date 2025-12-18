@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-may-check-for-updates-config"
+description = "Enables the may_check_for_updates_config command without any pre-configured scope."
+commands.allow = ["may_check_for_updates_config"]
+
+[[permission]]
+identifier = "deny-may-check-for-updates-config"
+description = "Denies the may_check_for_updates_config command without any pre-configured scope."
+commands.deny = ["may_check_for_updates_config"]

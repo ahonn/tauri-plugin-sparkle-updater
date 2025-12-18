@@ -8,9 +8,5 @@
     <string>WV/UDuFy1UI+UPuzoo5bDxkYLFM8QDMWmFTmYnuOckY=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
-    <key>SUAutomaticallyUpdate</key>
-    <false/>
-    <key>SUScheduledCheckInterval</key>
-    <integer>86400</integer>
 </dict>
 </plist>

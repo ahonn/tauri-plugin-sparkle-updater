@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-sends-system-profile"
+description = "Enables the set_sends_system_profile command without any pre-configured scope."
+commands.allow = ["set_sends_system_profile"]
+
+[[permission]]
+identifier = "deny-set-sends-system-profile"
+description = "Denies the set_sends_system_profile command without any pre-configured scope."
+commands.deny = ["set_sends_system_profile"]
