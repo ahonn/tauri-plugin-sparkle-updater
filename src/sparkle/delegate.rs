@@ -24,9 +24,11 @@ use crate::events::{
 };
 
 pub type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
+pub type EventCallback = Arc<dyn Fn(&str, &Value) + Send + Sync>;
 
 pub struct DelegateIvars {
     emitter: RefCell<Option<EventEmitter>>,
+    event_callback: RefCell<Option<EventCallback>>,
     allowed_channels: RefCell<Option<Vec<String>>>,
     feed_url_override: RefCell<Option<String>>,
     feed_parameters: RefCell<Option<HashMap<String, String>>>,
@@ -394,6 +396,7 @@ impl SparkleDelegate {
         let this = Self::alloc(mtm);
         let this = this.set_ivars(DelegateIvars {
             emitter: RefCell::new(None),
+            event_callback: RefCell::new(None),
             allowed_channels: RefCell::new(None),
             feed_url_override: RefCell::new(None),
             feed_parameters: RefCell::new(None),
@@ -411,10 +414,19 @@ impl SparkleDelegate {
         *self.ivars().emitter.borrow_mut() = Some(emitter);
     }
 
+    pub fn set_event_callback(&self, callback: Option<EventCallback>) {
+        *self.ivars().event_callback.borrow_mut() = callback;
+    }
+
     fn emit<T: Serialize>(&self, event: &str, payload: &T) {
         if let Some(ref emitter) = *self.ivars().emitter.borrow() {
             match serde_json::to_value(payload) {
-                Ok(value) => emitter(event, value),
+                Ok(value) => {
+                    if let Some(ref callback) = *self.ivars().event_callback.borrow() {
+                        callback(event, &value);
+                    }
+                    emitter(event, value)
+                }
                 Err(e) => error!("Failed to serialize event payload: {}", e),
             }
         }

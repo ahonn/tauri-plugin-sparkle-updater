@@ -330,3 +330,19 @@ export const onUserDidMakeChoice = createListener<UserDidMakeChoicePayload>(Even
 export const onWillScheduleUpdateCheck = createListener<WillScheduleUpdateCheckPayload>(Events.WILL_SCHEDULE_UPDATE_CHECK);
 export const onWillNotScheduleUpdateCheck = createListener<WillNotScheduleUpdateCheckPayload>(Events.WILL_NOT_SCHEDULE_UPDATE_CHECK);
 export const onWillInstallUpdateOnQuit = createListener<WillInstallUpdateOnQuitPayload>(Events.WILL_INSTALL_UPDATE_ON_QUIT);
+
+const ALL_EVENTS = Object.values(Events);
+
+export async function onAnyEvent(
+  handler: (event: string, payload: unknown) => void
+): Promise<UnlistenFn> {
+  const unlisteners = await Promise.all(
+    ALL_EVENTS.map((event) =>
+      listen(event, (e) => handler(event, e.payload))
+    )
+  );
+
+  return () => {
+    unlisteners.forEach((unlisten) => unlisten());
+  };
+}

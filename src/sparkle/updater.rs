@@ -11,7 +11,7 @@ use objc2_foundation::{NSBundle, NSDictionary, NSError, NSString, NSURL};
 use tauri::{AppHandle, Emitter, Runtime};
 
 use super::bindings::{SPUStandardUpdaterController, SPUUpdater};
-use super::delegate::SparkleDelegate;
+use super::delegate::{EventCallback, SparkleDelegate};
 use crate::events::UpdateInfo;
 use crate::{Error, Result};
 
@@ -424,5 +424,9 @@ impl<R: Runtime> SparkleUpdater<R> {
 
     pub fn last_found_update(&self) -> Result<Option<UpdateInfo>> {
         Ok(self.dispatch_delegate(|d| d.last_found_update()))
+    }
+
+    pub fn set_event_callback(&self, callback: Option<EventCallback>) {
+        self.dispatch_delegate(|d| d.set_event_callback(callback))
     }
 }

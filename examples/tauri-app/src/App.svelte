@@ -32,24 +32,7 @@
     decryptionPassword,
     setDecryptionPassword,
     lastFoundUpdate,
-    onDidFinishLoadingAppcast,
-    onDidFindValidUpdate,
-    onDidNotFindUpdate,
-    onWillDownloadUpdate,
-    onDidDownloadUpdate,
-    onWillInstallUpdate,
-    onDidAbortWithError,
-    onDidFinishUpdateCycle,
-    onFailedToDownloadUpdate,
-    onUserDidCancelDownload,
-    onWillExtractUpdate,
-    onDidExtractUpdate,
-    onWillRelaunchApplication,
-    onUserDidMakeChoice,
-    onWillScheduleUpdateCheck,
-    onWillNotScheduleUpdateCheck,
-    onShouldPromptForPermission,
-    onWillInstallUpdateOnQuit
+    onAnyEvent
   } from 'tauri-plugin-sparkle-updater-api'
 
   let response = $state('')
@@ -351,88 +334,15 @@
   }
 
   $effect(() => {
-    const unlisteners = []
+    let unlisten
 
-    onDidFinishLoadingAppcast(() => {
-      updateResponse('Appcast loaded')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidFindValidUpdate((payload) => {
-      let info = `Update available: v${payload.version}`
-      if (payload.isCritical) info += ' [CRITICAL]'
-      if (payload.isMajorUpgrade) info += ' [MAJOR]'
-      if (payload.channel) info += ` (${payload.channel})`
-      if (payload.minimumSystemVersion) info += ` (requires macOS ${payload.minimumSystemVersion})`
-      if (payload.title) info += ` - ${payload.title}`
-      updateResponse(info)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidNotFindUpdate(() => {
-      updateResponse('No update available')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillDownloadUpdate((payload) => {
-      updateResponse(`Will download: ${payload.version}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidDownloadUpdate((payload) => {
-      updateResponse(`Downloaded: ${payload.version}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillInstallUpdate((payload) => {
-      updateResponse(`Will install: ${payload.version}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidAbortWithError((payload) => {
-      updateResponse(`Error: ${payload.message}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidFinishUpdateCycle((payload) => {
-      updateResponse(`Update cycle finished: ${payload.updateCheck}${payload.error ? ` (error: ${payload.error.message})` : ''}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onFailedToDownloadUpdate((payload) => {
-      updateResponse(`Download failed: ${payload.version} - ${payload.error.message}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onUserDidCancelDownload(() => {
-      updateResponse('User cancelled download')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillExtractUpdate((payload) => {
-      updateResponse(`Will extract: ${payload.version}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onDidExtractUpdate((payload) => {
-      updateResponse(`Extracted: ${payload.version}`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillRelaunchApplication(() => {
-      updateResponse('Will relaunch application')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onUserDidMakeChoice((payload) => {
-      updateResponse(`User choice: ${payload.choice} for ${payload.version} (${payload.stage})`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillScheduleUpdateCheck((payload) => {
-      updateResponse(`Will schedule check in ${payload.delay}s`)
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillNotScheduleUpdateCheck(() => {
-      updateResponse('Will not schedule update check')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onShouldPromptForPermission(() => {
-      updateResponse('Should prompt for permission')
-    }).then(unlisten => unlisteners.push(unlisten))
-
-    onWillInstallUpdateOnQuit((payload) => {
-      updateResponse(`Will install ${payload.version} on quit`)
-    }).then(unlisten => unlisteners.push(unlisten))
+    onAnyEvent((event, payload) => {
+      const eventName = event.replace('sparkle://', '')
+      updateResponse(`[${eventName}] ${JSON.stringify(payload)}`)
+    }).then(fn => unlisten = fn)
 
     return () => {
-      unlisteners.forEach(unlisten => unlisten())
+      if (unlisten) unlisten()
     }
   })
 </script>
