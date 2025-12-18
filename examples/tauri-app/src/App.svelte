@@ -106,7 +106,13 @@
     }).then(unlisten => unlisteners.push(unlisten))
 
     onDidFindValidUpdate((payload) => {
-      updateResponse(`Update available: ${JSON.stringify(payload)}`)
+      let info = `Update available: v${payload.version}`
+      if (payload.isCritical) info += ' [CRITICAL]'
+      if (payload.isMajorUpgrade) info += ' [MAJOR]'
+      if (payload.channel) info += ` (${payload.channel})`
+      if (payload.minimumSystemVersion) info += ` (requires macOS ${payload.minimumSystemVersion})`
+      if (payload.title) info += ` - ${payload.title}`
+      updateResponse(info)
     }).then(unlisten => unlisteners.push(unlisten))
 
     onDidNotFindUpdate(() => {

@@ -1,6 +1,5 @@
 use serde::Serialize;
 
-// Existing events
 pub const EVENT_DID_FINISH_LOADING_APPCAST: &str = "sparkle://did-finish-loading-appcast";
 pub const EVENT_DID_FIND_VALID_UPDATE: &str = "sparkle://did-find-valid-update";
 pub const EVENT_DID_NOT_FIND_UPDATE: &str = "sparkle://did-not-find-update";
@@ -8,8 +7,6 @@ pub const EVENT_WILL_DOWNLOAD_UPDATE: &str = "sparkle://will-download-update";
 pub const EVENT_DID_DOWNLOAD_UPDATE: &str = "sparkle://did-download-update";
 pub const EVENT_WILL_INSTALL_UPDATE: &str = "sparkle://will-install-update";
 pub const EVENT_DID_ABORT_WITH_ERROR: &str = "sparkle://did-abort-with-error";
-
-// New events
 pub const EVENT_DID_FINISH_UPDATE_CYCLE: &str = "sparkle://did-finish-update-cycle";
 pub const EVENT_FAILED_TO_DOWNLOAD_UPDATE: &str = "sparkle://failed-to-download-update";
 pub const EVENT_USER_DID_CANCEL_DOWNLOAD: &str = "sparkle://user-did-cancel-download";
@@ -28,6 +25,22 @@ pub struct UpdateInfo {
     pub version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_notes_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub info_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_system_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub channel: Option<String>,
+    /// Unix timestamp in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<f64>,
+    pub is_critical: bool,
+    pub is_major_upgrade: bool,
+    pub is_information_only: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]

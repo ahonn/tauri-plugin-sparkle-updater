@@ -5,7 +5,7 @@ use log::error;
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
 use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
-use objc2_foundation::NSString;
+use objc2_foundation::{NSString, NSURL};
 use serde::Serialize;
 
 use super::bindings::SPUAppcastItem;
@@ -49,9 +49,26 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
+            let url_to_string = |url: &NSURL| -> String {
+                let abs: Option<Retained<NSString>> = unsafe { msg_send![url, absoluteString] };
+                abs.map(|s| s.to_string()).unwrap_or_default()
+            };
+
             self.emit(EVENT_DID_FIND_VALID_UPDATE, &UpdateInfo {
                 version: item.display_version_string().to_string(),
                 release_notes: item.item_description().map(|s| s.to_string()),
+                title: item.title().map(|s| s.to_string()),
+                release_notes_url: item.release_notes_url().map(|u| url_to_string(&u)),
+                info_url: item.info_url().map(|u| url_to_string(&u)),
+                minimum_system_version: item.minimum_system_version().map(|s| s.to_string()),
+                channel: item.channel().map(|s| s.to_string()),
+                date: item.date().map(|d| {
+                    let seconds: f64 = unsafe { msg_send![&d, timeIntervalSince1970] };
+                    seconds * 1000.0
+                }),
+                is_critical: item.is_critical_update(),
+                is_major_upgrade: item.is_major_upgrade(),
+                is_information_only: item.is_information_only_update(),
             });
         }
 

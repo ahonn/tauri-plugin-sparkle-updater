@@ -116,5 +116,32 @@ impl SPUAppcastItem {
 
         #[unsafe(method(contentLength))]
         pub fn content_length(&self) -> u64;
+
+        #[unsafe(method(title))]
+        pub fn title(&self) -> Option<Retained<NSString>>;
+
+        #[unsafe(method(releaseNotesURL))]
+        pub fn release_notes_url(&self) -> Option<Retained<NSURL>>;
+
+        #[unsafe(method(infoURL))]
+        pub fn info_url(&self) -> Option<Retained<NSURL>>;
+
+        #[unsafe(method(minimumSystemVersion))]
+        pub fn minimum_system_version(&self) -> Option<Retained<NSString>>;
+
+        #[unsafe(method(isCriticalUpdate))]
+        pub fn is_critical_update(&self) -> bool;
+
+        #[unsafe(method(isMajorUpgrade))]
+        pub fn is_major_upgrade(&self) -> bool;
+
+        #[unsafe(method(channel))]
+        pub fn channel(&self) -> Option<Retained<NSString>>;
+
+        #[unsafe(method(isInformationOnlyUpdate))]
+        pub fn is_information_only_update(&self) -> bool;
+
+        #[unsafe(method(date))]
+        pub fn date(&self) -> Option<Retained<NSDate>>;
     );
 }

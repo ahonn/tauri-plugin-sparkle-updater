@@ -4,6 +4,16 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 export interface UpdateInfo {
   version: string;
   releaseNotes?: string;
+  title?: string;
+  releaseNotesUrl?: string;
+  infoUrl?: string;
+  minimumSystemVersion?: string;
+  channel?: string;
+  /** Unix timestamp in milliseconds */
+  date?: number;
+  isCritical: boolean;
+  isMajorUpgrade: boolean;
+  isInformationOnly: boolean;
 }
 
 export interface VersionInfo {
