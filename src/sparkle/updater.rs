@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ptr;
 use std::sync::Arc;
 
@@ -262,5 +263,45 @@ impl<R: Runtime> SparkleUpdater<R> {
     /// Returns whether an update session is in progress.
     pub fn session_in_progress(&self) -> Result<bool> {
         Ok(self.dispatch(|c| c.updater().session_in_progress()))
+    }
+
+    /// Returns the custom HTTP headers used for update requests.
+    pub fn http_headers(&self) -> Result<Option<HashMap<String, String>>> {
+        Ok(self.dispatch(|c| {
+            c.updater().http_headers().map(|dict| {
+                let mut map = HashMap::new();
+                let count: usize = unsafe { objc2::msg_send![&dict, count] };
+                if count > 0 {
+                    let keys: Retained<objc2_foundation::NSArray<NSString>> =
+                        unsafe { objc2::msg_send![&dict, allKeys] };
+                    for i in 0..count {
+                        let key: &NSString = unsafe { objc2::msg_send![&keys, objectAtIndex: i] };
+                        let value: Option<Retained<NSString>> =
+                            unsafe { objc2::msg_send![&dict, objectForKey: key] };
+                        if let Some(v) = value {
+                            map.insert(key.to_string(), v.to_string());
+                        }
+                    }
+                }
+                map
+            })
+        }))
+    }
+
+    /// Sets custom HTTP headers for update requests.
+    pub fn set_http_headers(&self, headers: Option<HashMap<String, String>>) -> Result<()> {
+        self.dispatch(move |c| {
+            let ns_dict = headers.map(|h| {
+                let keys: Vec<Retained<NSString>> =
+                    h.keys().map(|k| NSString::from_str(k)).collect();
+                let values: Vec<Retained<NSString>> =
+                    h.values().map(|v| NSString::from_str(v)).collect();
+                let key_refs: Vec<&NSString> = keys.iter().map(|k| k.as_ref()).collect();
+                let value_refs: Vec<&NSString> = values.iter().map(|v| v.as_ref()).collect();
+                NSDictionary::from_slices(&key_refs, &value_refs)
+            });
+            c.updater().set_http_headers(ns_dict.as_deref());
+        });
+        Ok(())
     }
 }

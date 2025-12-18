@@ -143,6 +143,23 @@ export async function sessionInProgress(): Promise<boolean> {
   return invoke('plugin:sparkle-updater|session_in_progress');
 }
 
+/**
+ * Returns the custom HTTP headers used for update requests.
+ */
+export async function httpHeaders(): Promise<Record<string, string> | null> {
+  return invoke('plugin:sparkle-updater|http_headers');
+}
+
+/**
+ * Sets custom HTTP headers for update requests.
+ * Useful for authentication (API keys, Bearer tokens, etc.)
+ *
+ * @param headers - Key-value pairs of HTTP headers, or null to clear
+ */
+export async function setHttpHeaders(headers: Record<string, string> | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_http_headers', { headers });
+}
+
 export const Events = {
   DID_FINISH_LOADING_APPCAST: 'sparkle://did-finish-loading-appcast',
   DID_FIND_VALID_UPDATE: 'sparkle://did-find-valid-update',

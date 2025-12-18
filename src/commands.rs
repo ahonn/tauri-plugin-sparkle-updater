@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tauri::{command, AppHandle, Runtime};
 
 use crate::Error;
@@ -107,4 +109,19 @@ pub(crate) async fn check_for_update_information<R: Runtime>(app: AppHandle<R>) 
 #[command]
 pub(crate) async fn session_in_progress<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
     get_updater!(app).session_in_progress()
+}
+
+#[command]
+pub(crate) async fn http_headers<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<HashMap<String, String>>> {
+    get_updater!(app).http_headers()
+}
+
+#[command]
+pub(crate) async fn set_http_headers<R: Runtime>(
+    app: AppHandle<R>,
+    headers: Option<HashMap<String, String>>,
+) -> Result<()> {
+    get_updater!(app).set_http_headers(headers)
 }

@@ -20,6 +20,8 @@ Default permissions for the Sparkle updater plugin
 - `allow-set-update-check-interval`
 - `allow-check-for-update-information`
 - `allow-session-in-progress`
+- `allow-http-headers`
+- `allow-set-http-headers`
 
 ## Permission Table
 

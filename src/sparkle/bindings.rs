@@ -1,7 +1,7 @@
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
 use objc2::{extern_class, extern_methods, MainThreadOnly};
-use objc2_foundation::{NSDate, NSError, NSString, NSURL};
+use objc2_foundation::{NSDate, NSDictionary, NSError, NSString, NSURL};
 
 extern_class!(
     #[unsafe(super(NSObject))]
@@ -83,6 +83,12 @@ impl SPUUpdater {
 
         #[unsafe(method(sessionInProgress))]
         pub fn session_in_progress(&self) -> bool;
+
+        #[unsafe(method(httpHeaders))]
+        pub fn http_headers(&self) -> Option<Retained<NSDictionary<NSString, NSString>>>;
+
+        #[unsafe(method(setHttpHeaders:))]
+        pub fn set_http_headers(&self, headers: Option<&NSDictionary<NSString, NSString>>);
 
         #[unsafe(method(startUpdater:))]
         pub fn start_updater(&self, error: *mut *mut NSError) -> bool;

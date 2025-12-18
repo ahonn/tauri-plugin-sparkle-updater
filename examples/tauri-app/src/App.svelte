@@ -5,6 +5,8 @@
     checkForUpdatesInBackground,
     checkForUpdateInformation,
     sessionInProgress,
+    httpHeaders,
+    setHttpHeaders,
     currentVersion,
     canCheckForUpdates,
     feedUrl,
@@ -93,6 +95,36 @@
     try {
       const inProgress = await sessionInProgress()
       updateResponse(`Session in progress: ${inProgress}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getHttpHeaders() {
+    try {
+      const headers = await httpHeaders()
+      updateResponse(`HTTP headers: ${JSON.stringify(headers)}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _setTestHeaders() {
+    try {
+      await setHttpHeaders({
+        'X-Test-Header': 'test-value',
+        'Authorization': 'Bearer test-token'
+      })
+      updateResponse('HTTP headers set')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _clearHttpHeaders() {
+    try {
+      await setHttpHeaders(null)
+      updateResponse('HTTP headers cleared')
     } catch (e) {
       updateResponse(`Error: ${e}`)
     }
@@ -214,6 +246,9 @@
     <button onclick={_getVersion}>Get Version</button>
     <button onclick={_canCheck}>Can Check?</button>
     <button onclick={_getFeedUrl}>Get Feed URL</button>
+    <button onclick={_getHttpHeaders}>Get HTTP Headers</button>
+    <button onclick={_setTestHeaders}>Set Test Headers</button>
+    <button onclick={_clearHttpHeaders}>Clear Headers</button>
   </div>
 
   <div class="response">

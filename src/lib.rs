@@ -53,6 +53,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::set_update_check_interval,
             commands::check_for_update_information,
             commands::session_in_progress,
+            commands::http_headers,
+            commands::set_http_headers,
         ])
         .setup(|app, _api| {
             if let Some(sparkle_updater) = sparkle::init(app)? {
