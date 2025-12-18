@@ -71,7 +71,6 @@ export type WillRelaunchApplicationPayload = Record<string, never>;
 export type UserDidMakeChoicePayload = UserChoiceInfo;
 export type WillScheduleUpdateCheckPayload = ScheduleInfo;
 export type WillNotScheduleUpdateCheckPayload = Record<string, never>;
-export type ShouldPromptForPermissionPayload = Record<string, never>;
 export type WillInstallUpdateOnQuitPayload = VersionInfo;
 
 export async function checkForUpdates(): Promise<void> {
@@ -306,7 +305,6 @@ export const Events = {
   USER_DID_MAKE_CHOICE: 'sparkle://user-did-make-choice',
   WILL_SCHEDULE_UPDATE_CHECK: 'sparkle://will-schedule-update-check',
   WILL_NOT_SCHEDULE_UPDATE_CHECK: 'sparkle://will-not-schedule-update-check',
-  SHOULD_PROMPT_FOR_PERMISSION: 'sparkle://should-prompt-for-permission',
   WILL_INSTALL_UPDATE_ON_QUIT: 'sparkle://will-install-update-on-quit',
 } as const;
 
@@ -331,5 +329,4 @@ export const onWillRelaunchApplication = createListener<WillRelaunchApplicationP
 export const onUserDidMakeChoice = createListener<UserDidMakeChoicePayload>(Events.USER_DID_MAKE_CHOICE);
 export const onWillScheduleUpdateCheck = createListener<WillScheduleUpdateCheckPayload>(Events.WILL_SCHEDULE_UPDATE_CHECK);
 export const onWillNotScheduleUpdateCheck = createListener<WillNotScheduleUpdateCheckPayload>(Events.WILL_NOT_SCHEDULE_UPDATE_CHECK);
-export const onShouldPromptForPermission = createListener<ShouldPromptForPermissionPayload>(Events.SHOULD_PROMPT_FOR_PERMISSION);
 export const onWillInstallUpdateOnQuit = createListener<WillInstallUpdateOnQuitPayload>(Events.WILL_INSTALL_UPDATE_ON_QUIT);

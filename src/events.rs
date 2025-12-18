@@ -16,7 +16,6 @@ pub const EVENT_WILL_RELAUNCH_APPLICATION: &str = "sparkle://will-relaunch-appli
 pub const EVENT_USER_DID_MAKE_CHOICE: &str = "sparkle://user-did-make-choice";
 pub const EVENT_WILL_SCHEDULE_UPDATE_CHECK: &str = "sparkle://will-schedule-update-check";
 pub const EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK: &str = "sparkle://will-not-schedule-update-check";
-pub const EVENT_SHOULD_PROMPT_FOR_PERMISSION: &str = "sparkle://should-prompt-for-permission";
 pub const EVENT_WILL_INSTALL_UPDATE_ON_QUIT: &str = "sparkle://will-install-update-on-quit";
 
 #[derive(Clone, Debug, Serialize)]
