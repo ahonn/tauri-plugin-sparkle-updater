@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tauri::{command, AppHandle, Runtime};
 
+use crate::events::UpdateInfo;
 use crate::Error;
 use crate::Result;
 use crate::SparkleUpdaterExt;
@@ -164,4 +165,123 @@ pub(crate) async fn reset_update_cycle_after_short_delay<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<()> {
     get_updater!(app).reset_update_cycle_after_short_delay()
+}
+
+#[command]
+pub(crate) async fn allowed_channels<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<Vec<String>>> {
+    get_updater!(app).allowed_channels()
+}
+
+#[command]
+pub(crate) async fn set_allowed_channels<R: Runtime>(
+    app: AppHandle<R>,
+    channels: Option<Vec<String>>,
+) -> Result<()> {
+    get_updater!(app).set_allowed_channels(channels)
+}
+
+#[command]
+pub(crate) async fn feed_url_override<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>> {
+    get_updater!(app).feed_url_override()
+}
+
+#[command]
+pub(crate) async fn set_feed_url_override<R: Runtime>(
+    app: AppHandle<R>,
+    url: Option<String>,
+) -> Result<()> {
+    get_updater!(app).set_feed_url_override(url)
+}
+
+#[command]
+pub(crate) async fn feed_parameters<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<HashMap<String, String>>> {
+    get_updater!(app).feed_parameters()
+}
+
+#[command]
+pub(crate) async fn set_feed_parameters<R: Runtime>(
+    app: AppHandle<R>,
+    params: Option<HashMap<String, String>>,
+) -> Result<()> {
+    get_updater!(app).set_feed_parameters(params)
+}
+
+#[command]
+pub(crate) async fn should_download_release_notes<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).should_download_release_notes()
+}
+
+#[command]
+pub(crate) async fn set_should_download_release_notes<R: Runtime>(
+    app: AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    get_updater!(app).set_should_download_release_notes(enabled)
+}
+
+#[command]
+pub(crate) async fn should_relaunch_application<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).should_relaunch_application()
+}
+
+#[command]
+pub(crate) async fn set_should_relaunch_application<R: Runtime>(
+    app: AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    get_updater!(app).set_should_relaunch_application(enabled)
+}
+
+#[command]
+pub(crate) async fn may_check_for_updates_config<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).may_check_for_updates_config()
+}
+
+#[command]
+pub(crate) async fn set_may_check_for_updates_config<R: Runtime>(
+    app: AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    get_updater!(app).set_may_check_for_updates_config(enabled)
+}
+
+#[command]
+pub(crate) async fn should_proceed_with_update<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).should_proceed_with_update()
+}
+
+#[command]
+pub(crate) async fn set_should_proceed_with_update<R: Runtime>(
+    app: AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    get_updater!(app).set_should_proceed_with_update(enabled)
+}
+
+#[command]
+pub(crate) async fn decryption_password<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>> {
+    get_updater!(app).decryption_password()
+}
+
+#[command]
+pub(crate) async fn set_decryption_password<R: Runtime>(
+    app: AppHandle<R>,
+    password: Option<String>,
+) -> Result<()> {
+    get_updater!(app).set_decryption_password(password)
+}
+
+#[command]
+pub(crate) async fn last_found_update<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<UpdateInfo>> {
+    get_updater!(app).last_found_update()
 }

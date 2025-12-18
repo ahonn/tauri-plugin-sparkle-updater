@@ -1,29 +1,40 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use log::error;
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
 use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
-use objc2_foundation::{NSString, NSURL};
+use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSSet, NSString, NSURL};
 use serde::Serialize;
 
 use super::bindings::SPUAppcastItem;
+use crate::events::UpdateInfo;
 use crate::events::{
-    DownloadFailedInfo, EmptyPayload, ErrorPayload, ScheduleInfo, UpdateCycleInfo, UpdateInfo,
-    UserChoiceInfo, VersionInfo, EVENT_DID_ABORT_WITH_ERROR, EVENT_DID_DOWNLOAD_UPDATE,
-    EVENT_DID_EXTRACT_UPDATE, EVENT_DID_FIND_VALID_UPDATE, EVENT_DID_FINISH_LOADING_APPCAST,
-    EVENT_DID_FINISH_UPDATE_CYCLE, EVENT_DID_NOT_FIND_UPDATE, EVENT_FAILED_TO_DOWNLOAD_UPDATE,
-    EVENT_SHOULD_PROMPT_FOR_PERMISSION, EVENT_USER_DID_CANCEL_DOWNLOAD, EVENT_USER_DID_MAKE_CHOICE,
-    EVENT_WILL_DOWNLOAD_UPDATE, EVENT_WILL_EXTRACT_UPDATE, EVENT_WILL_INSTALL_UPDATE,
-    EVENT_WILL_INSTALL_UPDATE_ON_QUIT, EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK,
-    EVENT_WILL_RELAUNCH_APPLICATION, EVENT_WILL_SCHEDULE_UPDATE_CHECK,
+    DownloadFailedInfo, EmptyPayload, ErrorPayload, ScheduleInfo, UpdateCycleInfo, UserChoiceInfo,
+    VersionInfo, EVENT_DID_ABORT_WITH_ERROR, EVENT_DID_DOWNLOAD_UPDATE, EVENT_DID_EXTRACT_UPDATE,
+    EVENT_DID_FIND_VALID_UPDATE, EVENT_DID_FINISH_LOADING_APPCAST, EVENT_DID_FINISH_UPDATE_CYCLE,
+    EVENT_DID_NOT_FIND_UPDATE, EVENT_FAILED_TO_DOWNLOAD_UPDATE, EVENT_SHOULD_PROMPT_FOR_PERMISSION,
+    EVENT_USER_DID_CANCEL_DOWNLOAD, EVENT_USER_DID_MAKE_CHOICE, EVENT_WILL_DOWNLOAD_UPDATE,
+    EVENT_WILL_EXTRACT_UPDATE, EVENT_WILL_INSTALL_UPDATE, EVENT_WILL_INSTALL_UPDATE_ON_QUIT,
+    EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK, EVENT_WILL_RELAUNCH_APPLICATION,
+    EVENT_WILL_SCHEDULE_UPDATE_CHECK,
 };
 
 pub type EventEmitter = Arc<dyn Fn(&str, String) + Send + Sync>;
 
 pub struct DelegateIvars {
     emitter: RefCell<Option<EventEmitter>>,
+    allowed_channels: RefCell<Option<Vec<String>>>,
+    feed_url_override: RefCell<Option<String>>,
+    feed_parameters: RefCell<Option<HashMap<String, String>>>,
+    should_download_release_notes: RefCell<bool>,
+    should_relaunch: RefCell<bool>,
+    may_check_for_updates: RefCell<bool>,
+    should_proceed_with_update: RefCell<bool>,
+    decryption_password: RefCell<Option<String>>,
+    last_found_update: RefCell<Option<UpdateInfo>>,
 }
 
 define_class!(
@@ -54,7 +65,7 @@ define_class!(
                 abs.map(|s| s.to_string()).unwrap_or_default()
             };
 
-            self.emit(EVENT_DID_FIND_VALID_UPDATE, &UpdateInfo {
+            let update_info = UpdateInfo {
                 version: item.display_version_string().to_string(),
                 release_notes: item.item_description().map(|s| s.to_string()),
                 title: item.title().map(|s| s.to_string()),
@@ -69,7 +80,10 @@ define_class!(
                 is_critical: item.is_critical_update(),
                 is_major_upgrade: item.is_major_upgrade(),
                 is_information_only: item.is_information_only_update(),
-            });
+            };
+
+            *self.ivars().last_found_update.borrow_mut() = Some(update_info.clone());
+            self.emit(EVENT_DID_FIND_VALID_UPDATE, &update_info);
         }
 
         #[unsafe(method(updaterDidNotFindUpdate:))]
@@ -240,6 +254,114 @@ define_class!(
             });
             true
         }
+
+        #[unsafe(method(allowedChannelsForUpdater:))]
+        fn allowed_channels_for_updater(
+            &self,
+            _updater: &NSObject,
+        ) -> *mut NSSet<NSString> {
+            let channels = self.ivars().allowed_channels.borrow();
+            match channels.as_ref() {
+                Some(ch) => {
+                    let set = NSMutableSet::<NSString>::new();
+                    for channel in ch {
+                        let ns_str = NSString::from_str(channel);
+                        let _: () = unsafe { msg_send![&set, addObject: &*ns_str] };
+                    }
+                    Retained::autorelease_return(Retained::into_super(set))
+                }
+                None => std::ptr::null_mut(),
+            }
+        }
+
+        #[unsafe(method(feedURLStringForUpdater:))]
+        fn feed_url_string_for_updater(
+            &self,
+            _updater: &NSObject,
+        ) -> *mut NSString {
+            let url = self.ivars().feed_url_override.borrow();
+            match url.as_ref() {
+                Some(u) => Retained::autorelease_return(NSString::from_str(u)),
+                None => std::ptr::null_mut(),
+            }
+        }
+
+        #[unsafe(method(feedParametersForUpdater:sendingSystemProfile:))]
+        fn feed_parameters_for_updater(
+            &self,
+            _updater: &NSObject,
+            _sending_profile: bool,
+        ) -> *mut NSArray<NSDictionary<NSString, NSString>> {
+            let params = self.ivars().feed_parameters.borrow();
+            let array = match params.as_ref() {
+                Some(p) if !p.is_empty() => {
+                    let mut dicts: Vec<Retained<NSDictionary<NSString, NSString>>> = Vec::new();
+                    for (key, value) in p {
+                        let key_str = NSString::from_str("key");
+                        let value_str = NSString::from_str("value");
+                        let k = NSString::from_str(key);
+                        let v = NSString::from_str(value);
+                        let dict = NSDictionary::from_slices(
+                            &[&*key_str, &*value_str],
+                            &[&*k, &*v],
+                        );
+                        dicts.push(dict);
+                    }
+                    let refs: Vec<&NSDictionary<NSString, NSString>> =
+                        dicts.iter().map(|d| d.as_ref()).collect();
+                    NSArray::from_slice(&refs)
+                }
+                _ => NSArray::new(),
+            };
+            Retained::autorelease_return(array)
+        }
+
+        #[unsafe(method(updater:shouldDownloadReleaseNotesForUpdate:))]
+        fn updater_should_download_release_notes(
+            &self,
+            _updater: &NSObject,
+            _item: &SPUAppcastItem,
+        ) -> bool {
+            *self.ivars().should_download_release_notes.borrow()
+        }
+
+        #[unsafe(method(updaterShouldRelaunchApplication:))]
+        fn updater_should_relaunch_application(&self, _updater: &NSObject) -> bool {
+            *self.ivars().should_relaunch.borrow()
+        }
+
+        #[unsafe(method(updater:mayPerformUpdateCheck:error:))]
+        fn updater_may_perform_update_check(
+            &self,
+            _updater: &NSObject,
+            _update_check: isize,
+            _error: *mut *mut NSObject,
+        ) -> bool {
+            *self.ivars().may_check_for_updates.borrow()
+        }
+
+        #[unsafe(method(updater:shouldProceedWithUpdate:updateCheck:error:))]
+        fn updater_should_proceed_with_update(
+            &self,
+            _updater: &NSObject,
+            _item: &SPUAppcastItem,
+            _update_check: isize,
+            _error: *mut *mut NSObject,
+        ) -> bool {
+            *self.ivars().should_proceed_with_update.borrow()
+        }
+
+        #[unsafe(method(decryptionPasswordForUpdater:))]
+        fn decryption_password_for_updater(
+            &self,
+            _updater: &NSObject,
+        ) -> *mut NSString {
+            let password = self.ivars().decryption_password.borrow();
+            match password.as_ref() {
+                Some(p) => Retained::autorelease_return(NSString::from_str(p)),
+                None => std::ptr::null_mut(),
+            }
+        }
     }
 );
 
@@ -258,6 +380,15 @@ impl SparkleDelegate {
         let this = Self::alloc(mtm);
         let this = this.set_ivars(DelegateIvars {
             emitter: RefCell::new(None),
+            allowed_channels: RefCell::new(None),
+            feed_url_override: RefCell::new(None),
+            feed_parameters: RefCell::new(None),
+            should_download_release_notes: RefCell::new(true),
+            should_relaunch: RefCell::new(true),
+            may_check_for_updates: RefCell::new(true),
+            should_proceed_with_update: RefCell::new(true),
+            decryption_password: RefCell::new(None),
+            last_found_update: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -273,5 +404,73 @@ impl SparkleDelegate {
                 Err(e) => error!("Failed to serialize event payload: {}", e),
             }
         }
+    }
+
+    pub fn allowed_channels(&self) -> Option<Vec<String>> {
+        self.ivars().allowed_channels.borrow().clone()
+    }
+
+    pub fn set_allowed_channels(&self, channels: Option<Vec<String>>) {
+        *self.ivars().allowed_channels.borrow_mut() = channels;
+    }
+
+    pub fn feed_url_override(&self) -> Option<String> {
+        self.ivars().feed_url_override.borrow().clone()
+    }
+
+    pub fn set_feed_url_override(&self, url: Option<String>) {
+        *self.ivars().feed_url_override.borrow_mut() = url;
+    }
+
+    pub fn feed_parameters(&self) -> Option<HashMap<String, String>> {
+        self.ivars().feed_parameters.borrow().clone()
+    }
+
+    pub fn set_feed_parameters(&self, params: Option<HashMap<String, String>>) {
+        *self.ivars().feed_parameters.borrow_mut() = params;
+    }
+
+    pub fn should_download_release_notes(&self) -> bool {
+        *self.ivars().should_download_release_notes.borrow()
+    }
+
+    pub fn set_should_download_release_notes(&self, enabled: bool) {
+        *self.ivars().should_download_release_notes.borrow_mut() = enabled;
+    }
+
+    pub fn should_relaunch(&self) -> bool {
+        *self.ivars().should_relaunch.borrow()
+    }
+
+    pub fn set_should_relaunch(&self, enabled: bool) {
+        *self.ivars().should_relaunch.borrow_mut() = enabled;
+    }
+
+    pub fn may_check_for_updates(&self) -> bool {
+        *self.ivars().may_check_for_updates.borrow()
+    }
+
+    pub fn set_may_check_for_updates(&self, enabled: bool) {
+        *self.ivars().may_check_for_updates.borrow_mut() = enabled;
+    }
+
+    pub fn should_proceed_with_update(&self) -> bool {
+        *self.ivars().should_proceed_with_update.borrow()
+    }
+
+    pub fn set_should_proceed_with_update(&self, enabled: bool) {
+        *self.ivars().should_proceed_with_update.borrow_mut() = enabled;
+    }
+
+    pub fn decryption_password(&self) -> Option<String> {
+        self.ivars().decryption_password.borrow().clone()
+    }
+
+    pub fn set_decryption_password(&self, password: Option<String>) {
+        *self.ivars().decryption_password.borrow_mut() = password;
+    }
+
+    pub fn last_found_update(&self) -> Option<UpdateInfo> {
+        self.ivars().last_found_update.borrow().clone()
     }
 }

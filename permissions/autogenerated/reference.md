@@ -28,6 +28,23 @@ Default permissions for the Sparkle updater plugin
 - `allow-set-sends-system-profile`
 - `allow-clear-feed-url-from-user-defaults`
 - `allow-reset-update-cycle-after-short-delay`
+- `allow-allowed-channels`
+- `allow-set-allowed-channels`
+- `allow-feed-url-override`
+- `allow-set-feed-url-override`
+- `allow-feed-parameters`
+- `allow-set-feed-parameters`
+- `allow-should-download-release-notes`
+- `allow-set-should-download-release-notes`
+- `allow-should-relaunch-application`
+- `allow-set-should-relaunch-application`
+- `allow-may-check-for-updates-config`
+- `allow-set-may-check-for-updates-config`
+- `allow-should-proceed-with-update`
+- `allow-set-should-proceed-with-update`
+- `allow-decryption-password`
+- `allow-set-decryption-password`
+- `allow-last-found-update`
 
 ## Permission Table
 

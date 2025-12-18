@@ -212,6 +212,74 @@ export async function resetUpdateCycleAfterShortDelay(): Promise<void> {
   return invoke('plugin:sparkle-updater|reset_update_cycle_after_short_delay');
 }
 
+export async function allowedChannels(): Promise<string[] | null> {
+  return invoke('plugin:sparkle-updater|allowed_channels');
+}
+
+export async function setAllowedChannels(channels: string[] | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_allowed_channels', { channels });
+}
+
+export async function feedUrlOverride(): Promise<string | null> {
+  return invoke('plugin:sparkle-updater|feed_url_override');
+}
+
+export async function setFeedUrlOverride(url: string | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_feed_url_override', { url });
+}
+
+export async function feedParameters(): Promise<Record<string, string> | null> {
+  return invoke('plugin:sparkle-updater|feed_parameters');
+}
+
+export async function setFeedParameters(params: Record<string, string> | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_feed_parameters', { params });
+}
+
+export async function shouldDownloadReleaseNotes(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|should_download_release_notes');
+}
+
+export async function setShouldDownloadReleaseNotes(enabled: boolean): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_should_download_release_notes', { enabled });
+}
+
+export async function shouldRelaunchApplication(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|should_relaunch_application');
+}
+
+export async function setShouldRelaunchApplication(enabled: boolean): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_should_relaunch_application', { enabled });
+}
+
+export async function mayCheckForUpdatesConfig(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|may_check_for_updates_config');
+}
+
+export async function setMayCheckForUpdatesConfig(enabled: boolean): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_may_check_for_updates_config', { enabled });
+}
+
+export async function shouldProceedWithUpdate(): Promise<boolean> {
+  return invoke('plugin:sparkle-updater|should_proceed_with_update');
+}
+
+export async function setShouldProceedWithUpdate(enabled: boolean): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_should_proceed_with_update', { enabled });
+}
+
+export async function decryptionPassword(): Promise<string | null> {
+  return invoke('plugin:sparkle-updater|decryption_password');
+}
+
+export async function setDecryptionPassword(password: string | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_decryption_password', { password });
+}
+
+export async function lastFoundUpdate(): Promise<UpdateInfo | null> {
+  return invoke('plugin:sparkle-updater|last_found_update');
+}
+
 export const Events = {
   DID_FINISH_LOADING_APPCAST: 'sparkle://did-finish-loading-appcast',
   DID_FIND_VALID_UPDATE: 'sparkle://did-find-valid-update',

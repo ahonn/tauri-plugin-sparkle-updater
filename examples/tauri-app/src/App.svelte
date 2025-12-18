@@ -16,6 +16,23 @@
     currentVersion,
     canCheckForUpdates,
     feedUrl,
+    allowedChannels,
+    setAllowedChannels,
+    feedUrlOverride,
+    setFeedUrlOverride,
+    feedParameters,
+    setFeedParameters,
+    shouldDownloadReleaseNotes,
+    setShouldDownloadReleaseNotes,
+    shouldRelaunchApplication,
+    setShouldRelaunchApplication,
+    mayCheckForUpdatesConfig,
+    setMayCheckForUpdatesConfig,
+    shouldProceedWithUpdate,
+    setShouldProceedWithUpdate,
+    decryptionPassword,
+    setDecryptionPassword,
+    lastFoundUpdate,
     onDidFinishLoadingAppcast,
     onDidFindValidUpdate,
     onDidNotFindUpdate,
@@ -191,6 +208,149 @@
     }
   }
 
+  async function _getAllowedChannels() {
+    try {
+      const channels = await allowedChannels()
+      updateResponse(`Allowed channels: ${JSON.stringify(channels)}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _setTestChannels() {
+    try {
+      await setAllowedChannels(['stable', 'beta'])
+      updateResponse('Allowed channels set to [stable, beta]')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getFeedUrlOverride() {
+    try {
+      const url = await feedUrlOverride()
+      updateResponse(`Feed URL override: ${url ?? 'none'}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getFeedParams() {
+    try {
+      const params = await feedParameters()
+      updateResponse(`Feed parameters: ${JSON.stringify(params)}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _setTestFeedParams() {
+    try {
+      await setFeedParameters({ channel: 'beta', source: 'test' })
+      updateResponse('Feed parameters set')
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getDownloadNotes() {
+    try {
+      const download = await shouldDownloadReleaseNotes()
+      updateResponse(`Download release notes: ${download}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _toggleDownloadNotes() {
+    try {
+      const current = await shouldDownloadReleaseNotes()
+      await setShouldDownloadReleaseNotes(!current)
+      updateResponse(`Download release notes toggled to: ${!current}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getRelaunch() {
+    try {
+      const relaunch = await shouldRelaunchApplication()
+      updateResponse(`Should relaunch: ${relaunch}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _toggleRelaunch() {
+    try {
+      const current = await shouldRelaunchApplication()
+      await setShouldRelaunchApplication(!current)
+      updateResponse(`Should relaunch toggled to: ${!current}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getMayCheck() {
+    try {
+      const may = await mayCheckForUpdatesConfig()
+      updateResponse(`May check for updates: ${may}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _toggleMayCheck() {
+    try {
+      const current = await mayCheckForUpdatesConfig()
+      await setMayCheckForUpdatesConfig(!current)
+      updateResponse(`May check for updates toggled to: ${!current}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getShouldProceed() {
+    try {
+      const proceed = await shouldProceedWithUpdate()
+      updateResponse(`Should proceed with update: ${proceed}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _toggleShouldProceed() {
+    try {
+      const current = await shouldProceedWithUpdate()
+      await setShouldProceedWithUpdate(!current)
+      updateResponse(`Should proceed toggled to: ${!current}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getDecryptionPassword() {
+    try {
+      const pwd = await decryptionPassword()
+      updateResponse(`Decryption password: ${pwd ? '***' : 'none'}`)
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
+  async function _getLastFoundUpdate() {
+    try {
+      const update = await lastFoundUpdate()
+      if (update) {
+        updateResponse(`Last found update: v${update.version}${update.isCritical ? ' [CRITICAL]' : ''}`)
+      } else {
+        updateResponse('No update found yet')
+      }
+    } catch (e) {
+      updateResponse(`Error: ${e}`)
+    }
+  }
+
   $effect(() => {
     const unlisteners = []
 
@@ -316,6 +476,21 @@
     <button onclick={_toggleSendsProfile}>Toggle Profile</button>
     <button onclick={_clearFeedUrl}>Clear Feed URL</button>
     <button onclick={_resetCycleDelayed}>Reset Cycle Delayed</button>
+    <button onclick={_getAllowedChannels}>Get Channels</button>
+    <button onclick={_setTestChannels}>Set Channels</button>
+    <button onclick={_getFeedUrlOverride}>Feed Override</button>
+    <button onclick={_getFeedParams}>Get Feed Params</button>
+    <button onclick={_setTestFeedParams}>Set Feed Params</button>
+    <button onclick={_getDownloadNotes}>Download Notes?</button>
+    <button onclick={_toggleDownloadNotes}>Toggle Notes</button>
+    <button onclick={_getRelaunch}>Relaunch?</button>
+    <button onclick={_toggleRelaunch}>Toggle Relaunch</button>
+    <button onclick={_getMayCheck}>May Check?</button>
+    <button onclick={_toggleMayCheck}>Toggle May Check</button>
+    <button onclick={_getShouldProceed}>Proceed?</button>
+    <button onclick={_toggleShouldProceed}>Toggle Proceed</button>
+    <button onclick={_getDecryptionPassword}>Get Password</button>
+    <button onclick={_getLastFoundUpdate}>Last Update</button>
   </div>
 
   <div class="response">

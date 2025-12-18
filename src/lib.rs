@@ -61,6 +61,23 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::set_sends_system_profile,
             commands::clear_feed_url_from_user_defaults,
             commands::reset_update_cycle_after_short_delay,
+            commands::allowed_channels,
+            commands::set_allowed_channels,
+            commands::feed_url_override,
+            commands::set_feed_url_override,
+            commands::feed_parameters,
+            commands::set_feed_parameters,
+            commands::should_download_release_notes,
+            commands::set_should_download_release_notes,
+            commands::should_relaunch_application,
+            commands::set_should_relaunch_application,
+            commands::may_check_for_updates_config,
+            commands::set_may_check_for_updates_config,
+            commands::should_proceed_with_update,
+            commands::set_should_proceed_with_update,
+            commands::decryption_password,
+            commands::set_decryption_password,
+            commands::last_found_update,
         ])
         .setup(|app, _api| {
             if let Some(sparkle_updater) = sparkle::init(app)? {

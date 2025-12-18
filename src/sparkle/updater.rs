@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter, Runtime};
 
 use super::bindings::{SPUStandardUpdaterController, SPUUpdater};
 use super::delegate::SparkleDelegate;
+use crate::events::UpdateInfo;
 use crate::{Error, Result};
 
 /// Pointer wrapper for cross-thread dispatch. Only dereference on main thread.
@@ -104,12 +105,14 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
     }
 
     let controller_ptr = SendPtr::new(Retained::as_ptr(&controller));
+    let delegate_ptr = SendPtr::new(Retained::as_ptr(&delegate));
 
     Ok(Some(SparkleUpdater {
         app: app.clone(),
         _controller: controller,
         controller_ptr,
         _delegate: delegate,
+        delegate_ptr,
     }))
 }
 
@@ -147,6 +150,7 @@ pub struct SparkleUpdater<R: Runtime> {
     _controller: Retained<SPUStandardUpdaterController>,
     controller_ptr: SendPtr<SPUStandardUpdaterController>,
     _delegate: Retained<SparkleDelegate>,
+    delegate_ptr: SendPtr<SparkleDelegate>,
 }
 
 // All operations dispatched to main thread via GCD
@@ -163,6 +167,18 @@ impl<R: Runtime> SparkleUpdater<R> {
         Queue::main().exec_sync(move || {
             let controller = unsafe { ptr.as_ref() };
             f(controller)
+        })
+    }
+
+    fn dispatch_delegate<T, F>(&self, f: F) -> T
+    where
+        T: Send,
+        F: FnOnce(&SparkleDelegate) -> T + Send,
+    {
+        let ptr = self.delegate_ptr;
+        Queue::main().exec_sync(move || {
+            let delegate = unsafe { ptr.as_ref() };
+            f(delegate)
         })
     }
 
@@ -227,7 +243,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns Unix timestamp in milliseconds. None if never checked.
     pub fn last_update_check_date(&self) -> Result<Option<f64>> {
         Ok(self.dispatch(|c| {
             c.updater().last_update_check_date().map(|date| {
@@ -242,30 +257,24 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns the update check interval in seconds.
     pub fn update_check_interval(&self) -> Result<f64> {
         Ok(self.dispatch(|c| c.updater().update_check_interval()))
     }
 
-    /// Sets the update check interval in seconds.
     pub fn set_update_check_interval(&self, interval: f64) -> Result<()> {
         self.dispatch(|c| c.updater().set_update_check_interval(interval));
         Ok(())
     }
 
-    /// Begins a "probing" check for updates which will not actually offer to update.
-    /// Useful for determining if an update is available without showing UI.
     pub fn check_for_update_information(&self) -> Result<()> {
         self.dispatch(|c| c.updater().check_for_update_information());
         Ok(())
     }
 
-    /// Returns whether an update session is in progress.
     pub fn session_in_progress(&self) -> Result<bool> {
         Ok(self.dispatch(|c| c.updater().session_in_progress()))
     }
 
-    /// Returns the custom HTTP headers used for update requests.
     pub fn http_headers(&self) -> Result<Option<HashMap<String, String>>> {
         Ok(self.dispatch(|c| {
             c.updater().http_headers().map(|dict| {
@@ -288,7 +297,6 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Sets custom HTTP headers for update requests.
     pub fn set_http_headers(&self, headers: Option<HashMap<String, String>>) -> Result<()> {
         self.dispatch(move |c| {
             let ns_dict = headers.map(|h| {
@@ -305,12 +313,10 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns the User-Agent string used for update requests.
     pub fn user_agent_string(&self) -> Result<String> {
         Ok(self.dispatch(|c| c.updater().user_agent_string().to_string()))
     }
 
-    /// Sets a custom User-Agent string for update requests.
     pub fn set_user_agent_string(&self, user_agent: &str) -> Result<()> {
         let ua = user_agent.to_string();
         self.dispatch(move |c| {
@@ -320,19 +326,15 @@ impl<R: Runtime> SparkleUpdater<R> {
         Ok(())
     }
 
-    /// Returns whether the updater sends system profile information.
     pub fn sends_system_profile(&self) -> Result<bool> {
         Ok(self.dispatch(|c| c.updater().sends_system_profile()))
     }
 
-    /// Sets whether the updater should send system profile information.
     pub fn set_sends_system_profile(&self, sends: bool) -> Result<()> {
         self.dispatch(|c| c.updater().set_sends_system_profile(sends));
         Ok(())
     }
 
-    /// Clears the feed URL stored in user defaults.
-    /// Returns the URL that was cleared, or None if no URL was stored.
     pub fn clear_feed_url_from_user_defaults(&self) -> Result<Option<String>> {
         Ok(self.dispatch(|c| {
             c.updater().clear_feed_url_from_user_defaults().and_then(|url| {
@@ -343,10 +345,84 @@ impl<R: Runtime> SparkleUpdater<R> {
         }))
     }
 
-    /// Resets the update cycle after a short delay.
-    /// Useful when settings change and you want to allow the user to undo.
     pub fn reset_update_cycle_after_short_delay(&self) -> Result<()> {
         self.dispatch(|c| c.updater().reset_update_cycle_after_short_delay());
         Ok(())
+    }
+
+    pub fn allowed_channels(&self) -> Result<Option<Vec<String>>> {
+        Ok(self.dispatch_delegate(|d| d.allowed_channels()))
+    }
+
+    pub fn set_allowed_channels(&self, channels: Option<Vec<String>>) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_allowed_channels(channels));
+        Ok(())
+    }
+
+    pub fn feed_url_override(&self) -> Result<Option<String>> {
+        Ok(self.dispatch_delegate(|d| d.feed_url_override()))
+    }
+
+    pub fn set_feed_url_override(&self, url: Option<String>) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_feed_url_override(url));
+        Ok(())
+    }
+
+    pub fn feed_parameters(&self) -> Result<Option<HashMap<String, String>>> {
+        Ok(self.dispatch_delegate(|d| d.feed_parameters()))
+    }
+
+    pub fn set_feed_parameters(&self, params: Option<HashMap<String, String>>) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_feed_parameters(params));
+        Ok(())
+    }
+
+    pub fn should_download_release_notes(&self) -> Result<bool> {
+        Ok(self.dispatch_delegate(|d| d.should_download_release_notes()))
+    }
+
+    pub fn set_should_download_release_notes(&self, enabled: bool) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_should_download_release_notes(enabled));
+        Ok(())
+    }
+
+    pub fn should_relaunch_application(&self) -> Result<bool> {
+        Ok(self.dispatch_delegate(|d| d.should_relaunch()))
+    }
+
+    pub fn set_should_relaunch_application(&self, enabled: bool) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_should_relaunch(enabled));
+        Ok(())
+    }
+
+    pub fn may_check_for_updates_config(&self) -> Result<bool> {
+        Ok(self.dispatch_delegate(|d| d.may_check_for_updates()))
+    }
+
+    pub fn set_may_check_for_updates_config(&self, enabled: bool) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_may_check_for_updates(enabled));
+        Ok(())
+    }
+
+    pub fn should_proceed_with_update(&self) -> Result<bool> {
+        Ok(self.dispatch_delegate(|d| d.should_proceed_with_update()))
+    }
+
+    pub fn set_should_proceed_with_update(&self, enabled: bool) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_should_proceed_with_update(enabled));
+        Ok(())
+    }
+
+    pub fn decryption_password(&self) -> Result<Option<String>> {
+        Ok(self.dispatch_delegate(|d| d.decryption_password()))
+    }
+
+    pub fn set_decryption_password(&self, password: Option<String>) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_decryption_password(password));
+        Ok(())
+    }
+
+    pub fn last_found_update(&self) -> Result<Option<UpdateInfo>> {
+        Ok(self.dispatch_delegate(|d| d.last_found_update()))
     }
 }
