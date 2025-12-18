@@ -28,7 +28,7 @@ A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) updat
 ```toml
 # src-tauri/Cargo.toml
 [target.'cfg(target_os = "macos")'.dependencies]
-tauri-plugin-sparkle-updater = "0.1"
+tauri-plugin-sparkle-updater = "0.2"
 ```
 
 ```bash
