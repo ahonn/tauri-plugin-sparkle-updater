@@ -4,7 +4,7 @@ set -e
 VERSION="2.8.1"
 EXPECTED_SHA256="5cddb7695674ef7704268f38eccaee80e3accbf19e61c1689efff5b6116d85be"
 
-cd "$(dirname "$0")/.."
+cd "$(pwd "$0")/src-tauri"
 
 if [ -d "Sparkle.framework" ]; then
     echo "Sparkle.framework already exists"

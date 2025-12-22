@@ -42,7 +42,7 @@ npm install tauri-plugin-sparkle-updater-api
 curl -fsSL https://raw.githubusercontent.com/ahonn/tauri-plugin-sparkle-updater/refs/heads/master/scripts/download-sparkle.sh | bash
 
 # Generate signing keys (saved to Keychain)
-./sparkle-bin/generate_keys
+./src-tauri/sparkle-bin/generate_keys
 ```
 
 ### 3. Configure Info.plist
