@@ -81,7 +81,7 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>>
     let controller = unsafe {
         let alloc: objc2::rc::Allocated<SPUStandardUpdaterController> =
             objc2::msg_send![SPUStandardUpdaterController::class(), alloc];
-        let delegate_obj: &NSObject = &*delegate;
+        let delegate_obj: &NSObject = &delegate;
         SPUStandardUpdaterController::init_with_starting_updater(
             alloc,
             false,
@@ -337,11 +337,13 @@ impl<R: Runtime> SparkleUpdater<R> {
 
     pub fn clear_feed_url_from_user_defaults(&self) -> Result<Option<String>> {
         Ok(self.dispatch(|c| {
-            c.updater().clear_feed_url_from_user_defaults().and_then(|url| {
-                let abs: Option<Retained<NSString>> =
-                    unsafe { objc2::msg_send![&url, absoluteString] };
-                abs.map(|s| s.to_string())
-            })
+            c.updater()
+                .clear_feed_url_from_user_defaults()
+                .and_then(|url| {
+                    let abs: Option<Retained<NSString>> =
+                        unsafe { objc2::msg_send![&url, absoluteString] };
+                    abs.map(|s| s.to_string())
+                })
         }))
     }
 

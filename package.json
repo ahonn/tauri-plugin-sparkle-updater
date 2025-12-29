@@ -35,15 +35,17 @@
   "scripts": {
     "build": "rollup -c",
     "prepublishOnly": "pnpm build",
-    "pretest": "pnpm build"
+    "pretest": "pnpm build",
+    "prepare": "husky"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.0.0",
+    "husky": "^9.1.7",
     "rollup": "^4.9.6",
-    "typescript": "^5.3.3",
-    "tslib": "^2.6.2"
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
   }
 }
