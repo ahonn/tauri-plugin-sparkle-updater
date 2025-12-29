@@ -119,18 +119,13 @@ fn setup_sparkle_framework() {
         eprintln!("Searched paths: {:?}", search_paths);
         panic!(
             "\n\
-            ╔══════════════════════════════════════════════════════════════╗\n\
-            ║  Sparkle.framework not found!                                ║\n\
-            ╠══════════════════════════════════════════════════════════════╣\n\
-            ║  Please download Sparkle and place it in src-tauri/:         ║\n\
-            ║                                                              ║\n\
-            ║  cd src-tauri                                                ║\n\
-            ║  curl -L -o sparkle.tar.xz \\                                 ║\n\
-            ║    https://github.com/sparkle-project/Sparkle/releases/\\     ║\n\
-            ║    download/2.8.1/Sparkle-2.8.1.tar.xz                       ║\n\
-            ║  tar -xf sparkle.tar.xz Sparkle.framework                    ║\n\
-            ║  rm sparkle.tar.xz                                           ║\n\
-            ╚══════════════════════════════════════════════════════════════╝\n"
+            Sparkle.framework not found!\n\
+            \n\
+            Please download Sparkle framework by running:\n\
+            \n\
+            curl -fsSL https://raw.githubusercontent.com/ahonn/tauri-plugin-sparkle-updater/refs/heads/master/scripts/download-sparkle.sh | bash\n\
+            \n\
+            Or set the SPARKLE_FRAMEWORK_PATH environment variable to the directory containing Sparkle.framework.\n"
         )
     });
 
