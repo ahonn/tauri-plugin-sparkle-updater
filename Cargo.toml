@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-sparkle-updater"
-version = "0.2.1"
+version = "0.2.2"
 description = "Tauri plugin for macOS app updates using the Sparkle framework"
 authors = ["ahonn <ahonn95@outlook.com>"]
 license = "MIT"
