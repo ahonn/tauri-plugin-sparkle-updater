@@ -1,0 +1,29 @@
+#!/bin/sh
+
+echo "Running pre-commit checks..."
+
+# Check Rust formatting
+echo "Checking Rust formatting..."
+cargo fmt --all -- --check
+if [ $? -ne 0 ]; then
+    echo "Rust formatting check failed. Run 'cargo fmt' to fix."
+    exit 1
+fi
+
+# Run clippy
+echo "Running clippy..."
+cargo clippy --all-targets -- -D warnings
+if [ $? -ne 0 ]; then
+    echo "Clippy check failed. Please fix the warnings above."
+    exit 1
+fi
+
+# Run tests
+echo "Running tests..."
+cargo test --verbose
+if [ $? -ne 0 ]; then
+    echo "Tests failed. Please fix the failing tests."
+    exit 1
+fi
+
+echo "All pre-commit checks passed!"

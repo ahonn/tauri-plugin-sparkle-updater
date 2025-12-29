@@ -65,9 +65,7 @@ pub(crate) async fn set_automatically_checks_for_updates<R: Runtime>(
 }
 
 #[command]
-pub(crate) async fn automatically_downloads_updates<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<bool> {
+pub(crate) async fn automatically_downloads_updates<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
     get_updater!(app).automatically_downloads_updates()
 }
 
@@ -168,9 +166,7 @@ pub(crate) async fn reset_update_cycle_after_short_delay<R: Runtime>(
 }
 
 #[command]
-pub(crate) async fn allowed_channels<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Option<Vec<String>>> {
+pub(crate) async fn allowed_channels<R: Runtime>(app: AppHandle<R>) -> Result<Option<Vec<String>>> {
     get_updater!(app).allowed_channels()
 }
 
@@ -183,9 +179,7 @@ pub(crate) async fn set_allowed_channels<R: Runtime>(
 }
 
 #[command]
-pub(crate) async fn feed_url_override<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Option<String>> {
+pub(crate) async fn feed_url_override<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>> {
     get_updater!(app).feed_url_override()
 }
 
@@ -265,9 +259,7 @@ pub(crate) async fn set_should_proceed_with_update<R: Runtime>(
 }
 
 #[command]
-pub(crate) async fn decryption_password<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Option<String>> {
+pub(crate) async fn decryption_password<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>> {
     get_updater!(app).decryption_password()
 }
 
@@ -280,8 +272,6 @@ pub(crate) async fn set_decryption_password<R: Runtime>(
 }
 
 #[command]
-pub(crate) async fn last_found_update<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Option<UpdateInfo>> {
+pub(crate) async fn last_found_update<R: Runtime>(app: AppHandle<R>) -> Result<Option<UpdateInfo>> {
     get_updater!(app).last_found_update()
 }
