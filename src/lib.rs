@@ -77,6 +77,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::set_should_proceed_with_update,
             commands::decryption_password,
             commands::set_decryption_password,
+            commands::download_request_headers,
+            commands::set_download_request_headers,
             commands::last_found_update,
         ])
         .setup(|app, _api| {

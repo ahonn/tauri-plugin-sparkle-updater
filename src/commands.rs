@@ -272,6 +272,21 @@ pub(crate) async fn set_decryption_password<R: Runtime>(
 }
 
 #[command]
+pub(crate) async fn download_request_headers<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<HashMap<String, String>>> {
+    get_updater!(app).download_request_headers()
+}
+
+#[command]
+pub(crate) async fn set_download_request_headers<R: Runtime>(
+    app: AppHandle<R>,
+    headers: Option<HashMap<String, String>>,
+) -> Result<()> {
+    get_updater!(app).set_download_request_headers(headers)
+}
+
+#[command]
 pub(crate) async fn last_found_update<R: Runtime>(app: AppHandle<R>) -> Result<Option<UpdateInfo>> {
     get_updater!(app).last_found_update()
 }

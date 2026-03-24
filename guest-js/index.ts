@@ -169,6 +169,25 @@ export async function setHttpHeaders(headers: Record<string, string> | null): Pr
 }
 
 /**
+ * Returns the custom HTTP headers applied specifically to download requests.
+ * These headers are merged on top of the global httpHeaders when downloading updates.
+ */
+export async function downloadRequestHeaders(): Promise<Record<string, string> | null> {
+  return invoke('plugin:sparkle-updater|download_request_headers');
+}
+
+/**
+ * Sets custom HTTP headers applied specifically to download requests.
+ * These headers are injected into the download request via the willDownloadUpdate delegate callback,
+ * and will override any global httpHeaders with the same key.
+ *
+ * @param headers - Key-value pairs of HTTP headers, or null to clear
+ */
+export async function setDownloadRequestHeaders(headers: Record<string, string> | null): Promise<void> {
+  return invoke('plugin:sparkle-updater|set_download_request_headers', { headers });
+}
+
+/**
  * Returns the User-Agent string used for update requests.
  * Default format: "AppName/1.0 Sparkle/2.x"
  */

@@ -443,4 +443,16 @@ impl<R: Runtime> SparkleUpdater<R> {
     pub fn set_event_callback(&self, callback: Option<EventCallback>) {
         self.dispatch_delegate(|d| d.set_event_callback(callback))
     }
+
+    pub fn download_request_headers(&self) -> Result<Option<HashMap<String, String>>> {
+        Ok(self.dispatch_delegate(|d| d.download_request_headers()))
+    }
+
+    pub fn set_download_request_headers(
+        &self,
+        headers: Option<HashMap<String, String>>,
+    ) -> Result<()> {
+        self.dispatch_delegate(|d| d.set_download_request_headers(headers));
+        Ok(())
+    }
 }

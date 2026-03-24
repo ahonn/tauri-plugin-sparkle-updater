@@ -38,6 +38,7 @@ pub struct DelegateIvars {
     should_proceed_with_update: RefCell<bool>,
     decryption_password: RefCell<Option<String>>,
     last_found_update: RefCell<Option<UpdateInfo>>,
+    download_request_headers: RefCell<Option<HashMap<String, String>>>,
 }
 
 define_class!(
@@ -113,8 +114,17 @@ define_class!(
             &self,
             _updater: &NSObject,
             item: &SPUAppcastItem,
-            _request: &NSObject,
+            request: &NSObject,
         ) {
+            if let Some(ref headers) = *self.ivars().download_request_headers.borrow() {
+                for (key, value) in headers {
+                    let ns_value = NSString::from_str(value);
+                    let ns_field = NSString::from_str(key);
+                    let _: () =
+                        unsafe { msg_send![request, setValue: &*ns_value, forHTTPHeaderField: &*ns_field] };
+                }
+            }
+
             self.emit(EVENT_WILL_DOWNLOAD_UPDATE, &VersionInfo {
                 version: item.display_version_string().to_string(),
             });
@@ -406,6 +416,7 @@ impl SparkleDelegate {
             should_proceed_with_update: RefCell::new(true),
             decryption_password: RefCell::new(None),
             last_found_update: RefCell::new(None),
+            download_request_headers: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -498,5 +509,13 @@ impl SparkleDelegate {
 
     pub fn last_found_update(&self) -> Option<UpdateInfo> {
         self.ivars().last_found_update.borrow().clone()
+    }
+
+    pub fn download_request_headers(&self) -> Option<HashMap<String, String>> {
+        self.ivars().download_request_headers.borrow().clone()
+    }
+
+    pub fn set_download_request_headers(&self, headers: Option<HashMap<String, String>>) {
+        *self.ivars().download_request_headers.borrow_mut() = headers;
     }
 }
