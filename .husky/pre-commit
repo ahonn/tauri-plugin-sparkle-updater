@@ -20,7 +20,7 @@ fi
 
 # Run tests
 echo "Running tests..."
-cargo test --verbose
+DYLD_FRAMEWORK_PATH="$(pwd)" cargo test --verbose
 if [ $? -ne 0 ]; then
     echo "Tests failed. Please fix the failing tests."
     exit 1
