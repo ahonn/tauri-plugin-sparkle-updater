@@ -164,10 +164,16 @@ impl<R: Runtime> SparkleUpdater<R> {
         F: FnOnce(&SPUStandardUpdaterController) -> T + Send,
     {
         let ptr = self.controller_ptr;
-        Queue::main().exec_sync(move || {
+        if MainThreadMarker::new().is_some() {
+            // Already on main thread — call directly to avoid dispatch_sync deadlock
             let controller = unsafe { ptr.as_ref() };
             f(controller)
-        })
+        } else {
+            Queue::main().exec_sync(move || {
+                let controller = unsafe { ptr.as_ref() };
+                f(controller)
+            })
+        }
     }
 
     fn dispatch_delegate<T, F>(&self, f: F) -> T
@@ -176,10 +182,16 @@ impl<R: Runtime> SparkleUpdater<R> {
         F: FnOnce(&SparkleDelegate) -> T + Send,
     {
         let ptr = self.delegate_ptr;
-        Queue::main().exec_sync(move || {
+        if MainThreadMarker::new().is_some() {
+            // Already on main thread — call directly to avoid dispatch_sync deadlock
             let delegate = unsafe { ptr.as_ref() };
             f(delegate)
-        })
+        } else {
+            Queue::main().exec_sync(move || {
+                let delegate = unsafe { ptr.as_ref() };
+                f(delegate)
+            })
+        }
     }
 
     pub fn check_for_updates(&self) -> Result<()> {
