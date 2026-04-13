@@ -17,7 +17,7 @@ A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) updat
 
 ## Requirements
 
-- macOS 11.0+
+- macOS 10.13+ (High Sierra)
 - Tauri 2.x
 - Sparkle framework 2.8.1
 
