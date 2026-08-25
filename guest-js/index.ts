@@ -29,10 +29,40 @@ export interface VersionInfo {
   version: string;
 }
 
+/**
+ * Why Sparkle reported that no update is available.
+ *
+ * A `SUNoUpdateError` (code 1001) on its own only means "no eligible update in
+ * the effective update context", so read this before telling a user they are up
+ * to date. `unknown` also covers reasons newer than the bundled Sparkle;
+ * `reasonCode` keeps the raw value.
+ */
+export type NoUpdateReason =
+  | 'unknown'
+  | 'onLatestVersion'
+  | 'onNewerThanLatestVersion'
+  | 'systemIsTooOld'
+  | 'systemIsTooNew';
+
+export interface NoUpdateInfo {
+  reason: NoUpdateReason;
+  reasonCode: number;
+  userInitiated: boolean;
+  /**
+   * Newest item Sparkle could still see after channel filtering, including
+   * items rejected for OS requirements. Absent when the feed offered no
+   * applicable item at all.
+   */
+  latestItem?: UpdateInfo;
+  recoverySuggestion?: string;
+}
+
 export interface UpdateError {
   message: string;
   code: number;
   domain: string;
+  /** Present only for no-update outcomes. */
+  noUpdate?: NoUpdateInfo;
 }
 
 export interface UpdateCycleInfo {
@@ -57,7 +87,7 @@ export interface ScheduleInfo {
 
 export type DidFinishLoadingAppcastPayload = Record<string, never>;
 export type DidFindValidUpdatePayload = UpdateInfo;
-export type DidNotFindUpdatePayload = Record<string, never>;
+export type DidNotFindUpdatePayload = NoUpdateInfo;
 export type WillDownloadUpdatePayload = VersionInfo;
 export type DidDownloadUpdatePayload = VersionInfo;
 export type WillInstallUpdatePayload = VersionInfo;

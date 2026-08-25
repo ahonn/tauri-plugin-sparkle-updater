@@ -119,7 +119,7 @@ impl SPUUpdater {
 extern_class!(
     #[unsafe(super(NSObject))]
     #[thread_kind = MainThreadOnly]
-    #[name = "SPUAppcastItem"]
+    #[name = "SUAppcastItem"]
     #[derive(Debug)]
     pub struct SPUAppcastItem;
 );

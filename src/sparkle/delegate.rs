@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use log::error;
 use objc2::rc::Retained;
-use objc2::runtime::NSObject;
-use objc2::{define_class, msg_send, DeclaredClass, MainThreadMarker, MainThreadOnly};
+use objc2::runtime::{AnyObject, NSObject};
+use objc2::{define_class, msg_send, ClassType, DeclaredClass, MainThreadMarker, MainThreadOnly};
 use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSNumber, NSSet, NSString, NSURL};
 use serde::Serialize;
 use serde_json::Value;
@@ -13,14 +13,14 @@ use serde_json::Value;
 use super::bindings::SPUAppcastItem;
 use crate::events::UpdateInfo;
 use crate::events::{
-    DownloadFailedInfo, EmptyPayload, ErrorPayload, ScheduleInfo, UpdateCycleInfo, UserChoiceInfo,
-    VersionInfo, EVENT_DID_ABORT_WITH_ERROR, EVENT_DID_DOWNLOAD_UPDATE, EVENT_DID_EXTRACT_UPDATE,
-    EVENT_DID_FIND_VALID_UPDATE, EVENT_DID_FINISH_LOADING_APPCAST, EVENT_DID_FINISH_UPDATE_CYCLE,
-    EVENT_DID_NOT_FIND_UPDATE, EVENT_FAILED_TO_DOWNLOAD_UPDATE, EVENT_USER_DID_CANCEL_DOWNLOAD,
-    EVENT_USER_DID_MAKE_CHOICE, EVENT_WILL_DOWNLOAD_UPDATE, EVENT_WILL_EXTRACT_UPDATE,
-    EVENT_WILL_INSTALL_UPDATE, EVENT_WILL_INSTALL_UPDATE_ON_QUIT,
-    EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK, EVENT_WILL_RELAUNCH_APPLICATION,
-    EVENT_WILL_SCHEDULE_UPDATE_CHECK,
+    DownloadFailedInfo, EmptyPayload, ErrorPayload, NoUpdateInfo, NoUpdateReason, ScheduleInfo,
+    UpdateCycleInfo, UserChoiceInfo, VersionInfo, EVENT_DID_ABORT_WITH_ERROR,
+    EVENT_DID_DOWNLOAD_UPDATE, EVENT_DID_EXTRACT_UPDATE, EVENT_DID_FIND_VALID_UPDATE,
+    EVENT_DID_FINISH_LOADING_APPCAST, EVENT_DID_FINISH_UPDATE_CYCLE, EVENT_DID_NOT_FIND_UPDATE,
+    EVENT_FAILED_TO_DOWNLOAD_UPDATE, EVENT_USER_DID_CANCEL_DOWNLOAD, EVENT_USER_DID_MAKE_CHOICE,
+    EVENT_WILL_DOWNLOAD_UPDATE, EVENT_WILL_EXTRACT_UPDATE, EVENT_WILL_INSTALL_UPDATE,
+    EVENT_WILL_INSTALL_UPDATE_ON_QUIT, EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK,
+    EVENT_WILL_RELAUNCH_APPLICATION, EVENT_WILL_SCHEDULE_UPDATE_CHECK,
 };
 
 pub type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
@@ -64,49 +64,22 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            let url_to_string = |url: &NSURL| -> String {
-                let abs: Option<Retained<NSString>> = unsafe { msg_send![url, absoluteString] };
-                abs.map(|s| s.to_string()).unwrap_or_default()
-            };
-
-            let number_to_f64 = |num: &NSNumber| -> f64 {
-                unsafe { msg_send![num, doubleValue] }
-            };
-
-            let update_info = UpdateInfo {
-                version: item.display_version_string().to_string(),
-                release_notes: item.item_description().map(|s| s.to_string()),
-                title: item.title().map(|s| s.to_string()),
-                release_notes_url: item.release_notes_url().map(|u| url_to_string(&u)),
-                info_url: item.info_url().map(|u| url_to_string(&u)),
-                minimum_system_version: item.minimum_system_version().map(|s| s.to_string()),
-                channel: item.channel().map(|s| s.to_string()),
-                date: item.date().map(|d| {
-                    let seconds: f64 = unsafe { msg_send![&d, timeIntervalSince1970] };
-                    seconds * 1000.0
-                }),
-                is_critical: item.is_critical_update(),
-                is_major_upgrade: item.is_major_upgrade(),
-                is_information_only: item.is_information_only_update(),
-                maximum_system_version: item.maximum_system_version().map(|s| s.to_string()),
-                minimum_os_version_ok: item.minimum_operating_system_version_is_ok(),
-                maximum_os_version_ok: item.maximum_operating_system_version_is_ok(),
-                installation_type: item.installation_type().to_string(),
-                phased_rollout_interval: item.phased_rollout_interval().map(|n| number_to_f64(&n)),
-                full_release_notes_url: item.full_release_notes_url().map(|u| url_to_string(&u)),
-                minimum_autoupdate_version: item.minimum_autoupdate_version().map(|s| s.to_string()),
-                ignore_skipped_upgrades_below_version: item.ignore_skipped_upgrades_below_version().map(|s| s.to_string()),
-                date_string: item.date_string().map(|s| s.to_string()),
-                item_description_format: item.item_description_format().map(|s| s.to_string()),
-            };
+            let update_info = update_info_from_item(item);
 
             *self.ivars().last_found_update.borrow_mut() = Some(update_info.clone());
             self.emit(EVENT_DID_FIND_VALID_UPDATE, &update_info);
         }
 
-        #[unsafe(method(updaterDidNotFindUpdate:))]
-        fn updater_did_not_find_update(&self, _updater: &NSObject) {
-            self.emit(EVENT_DID_NOT_FIND_UPDATE, &EmptyPayload {});
+        // Sparkle prefers this over `updaterDidNotFindUpdate:`, and it is the
+        // only variant that carries why no update was found. Implementing the
+        // bare variant instead silently reduces every outcome -- OS too old,
+        // newer than the feed, nothing eligible -- to "up to date".
+        #[unsafe(method(updaterDidNotFindUpdate:error:))]
+        fn updater_did_not_find_update(&self, _updater: &NSObject, error: &NSObject) {
+            self.emit(
+                EVENT_DID_NOT_FIND_UPDATE,
+                &no_update_info(error).unwrap_or_default(),
+            );
         }
 
         #[unsafe(method(updater:willDownloadUpdate:withRequest:))]
@@ -158,11 +131,7 @@ define_class!(
             _updater: &NSObject,
             ns_error: &NSObject,
         ) {
-            self.emit(EVENT_DID_ABORT_WITH_ERROR, &ErrorPayload {
-                message: nserror_description(ns_error),
-                code: unsafe { msg_send![ns_error, code] },
-                domain: nserror_domain(ns_error),
-            });
+            self.emit(EVENT_DID_ABORT_WITH_ERROR, &error_payload(ns_error));
         }
 
         #[unsafe(method(updater:didFinishUpdateCycleForUpdateCheck:error:))]
@@ -179,11 +148,7 @@ define_class!(
             };
             self.emit(EVENT_DID_FINISH_UPDATE_CYCLE, &UpdateCycleInfo {
                 update_check: update_check_str.to_string(),
-                error: error.map(|e| ErrorPayload {
-                    message: nserror_description(e),
-                    code: unsafe { msg_send![e, code] },
-                    domain: nserror_domain(e),
-                }),
+                error: error.map(error_payload),
             });
         }
 
@@ -196,11 +161,7 @@ define_class!(
         ) {
             self.emit(EVENT_FAILED_TO_DOWNLOAD_UPDATE, &DownloadFailedInfo {
                 version: item.display_version_string().to_string(),
-                error: ErrorPayload {
-                    message: nserror_description(ns_error),
-                    code: unsafe { msg_send![ns_error, code] },
-                    domain: nserror_domain(ns_error),
-                },
+                error: error_payload(ns_error),
             });
         }
 
@@ -401,6 +362,117 @@ fn nserror_domain(error: &NSObject) -> String {
     domain.to_string()
 }
 
+fn nserror_recovery_suggestion(error: &NSObject) -> Option<String> {
+    let suggestion: Option<Retained<NSString>> =
+        unsafe { msg_send![error, localizedRecoverySuggestion] };
+    suggestion.map(|s| s.to_string())
+}
+
+// Sparkle exports these user info keys; linking them keeps the lookup in step
+// with the framework instead of hardcoding its string values.
+#[link(name = "Sparkle", kind = "framework")]
+extern "C" {
+    static SPUNoUpdateFoundReasonKey: &'static NSString;
+    static SPULatestAppcastItemFoundKey: &'static NSString;
+    static SPUNoUpdateFoundUserInitiatedKey: &'static NSString;
+}
+
+fn user_info_value(
+    user_info: &NSDictionary<NSString, AnyObject>,
+    key: &NSString,
+) -> Option<Retained<AnyObject>> {
+    unsafe { msg_send![user_info, objectForKey: key] }
+}
+
+fn user_info_number(user_info: &NSDictionary<NSString, AnyObject>, key: &NSString) -> Option<i64> {
+    let value = user_info_value(user_info, key)?;
+    let is_number: bool = unsafe { msg_send![&*value, isKindOfClass: NSNumber::class()] };
+    is_number.then(|| unsafe { msg_send![&*value, longLongValue] })
+}
+
+fn user_info_appcast_item(
+    user_info: &NSDictionary<NSString, AnyObject>,
+    key: &NSString,
+) -> Option<UpdateInfo> {
+    let value = user_info_value(user_info, key)?;
+    let is_item: bool = unsafe { msg_send![&*value, isKindOfClass: SPUAppcastItem::class()] };
+    if !is_item {
+        return None;
+    }
+
+    // Checked above, so the object really is an appcast item.
+    let item: &SPUAppcastItem = unsafe { &*Retained::as_ptr(&value).cast() };
+    Some(update_info_from_item(item))
+}
+
+/// Reads Sparkle's no-update context out of an `NSError`.
+///
+/// Returns `None` for anything that is not a no-update outcome: the reason key
+/// is what identifies one, so callers never have to match on error code 1001.
+fn no_update_info(error: &NSObject) -> Option<NoUpdateInfo> {
+    let user_info: Option<Retained<NSDictionary<NSString, AnyObject>>> =
+        unsafe { msg_send![error, userInfo] };
+    let user_info = user_info?;
+
+    let reason_code = user_info_number(&user_info, unsafe { SPUNoUpdateFoundReasonKey })?;
+
+    Some(NoUpdateInfo {
+        reason: NoUpdateReason::from_raw(reason_code),
+        reason_code,
+        user_initiated: user_info_number(&user_info, unsafe { SPUNoUpdateFoundUserInitiatedKey })
+            .is_some_and(|value| value != 0),
+        latest_item: user_info_appcast_item(&user_info, unsafe { SPULatestAppcastItemFoundKey }),
+        recovery_suggestion: nserror_recovery_suggestion(error),
+    })
+}
+
+fn error_payload(error: &NSObject) -> ErrorPayload {
+    ErrorPayload {
+        message: nserror_description(error),
+        code: unsafe { msg_send![error, code] },
+        domain: nserror_domain(error),
+        no_update: no_update_info(error),
+    }
+}
+
+fn update_info_from_item(item: &SPUAppcastItem) -> UpdateInfo {
+    let url_to_string = |url: &NSURL| -> String {
+        let abs: Option<Retained<NSString>> = unsafe { msg_send![url, absoluteString] };
+        abs.map(|s| s.to_string()).unwrap_or_default()
+    };
+
+    let number_to_f64 = |num: &NSNumber| -> f64 { unsafe { msg_send![num, doubleValue] } };
+
+    UpdateInfo {
+        version: item.display_version_string().to_string(),
+        release_notes: item.item_description().map(|s| s.to_string()),
+        title: item.title().map(|s| s.to_string()),
+        release_notes_url: item.release_notes_url().map(|u| url_to_string(&u)),
+        info_url: item.info_url().map(|u| url_to_string(&u)),
+        minimum_system_version: item.minimum_system_version().map(|s| s.to_string()),
+        channel: item.channel().map(|s| s.to_string()),
+        date: item.date().map(|d| {
+            let seconds: f64 = unsafe { msg_send![&d, timeIntervalSince1970] };
+            seconds * 1000.0
+        }),
+        is_critical: item.is_critical_update(),
+        is_major_upgrade: item.is_major_upgrade(),
+        is_information_only: item.is_information_only_update(),
+        maximum_system_version: item.maximum_system_version().map(|s| s.to_string()),
+        minimum_os_version_ok: item.minimum_operating_system_version_is_ok(),
+        maximum_os_version_ok: item.maximum_operating_system_version_is_ok(),
+        installation_type: item.installation_type().to_string(),
+        phased_rollout_interval: item.phased_rollout_interval().map(|n| number_to_f64(&n)),
+        full_release_notes_url: item.full_release_notes_url().map(|u| url_to_string(&u)),
+        minimum_autoupdate_version: item.minimum_autoupdate_version().map(|s| s.to_string()),
+        ignore_skipped_upgrades_below_version: item
+            .ignore_skipped_upgrades_below_version()
+            .map(|s| s.to_string()),
+        date_string: item.date_string().map(|s| s.to_string()),
+        item_description_format: item.item_description_format().map(|s| s.to_string()),
+    }
+}
+
 impl SparkleDelegate {
     pub fn new(mtm: MainThreadMarker) -> Retained<Self> {
         let this = Self::alloc(mtm);
@@ -517,5 +589,115 @@ impl SparkleDelegate {
 
     pub fn set_download_request_headers(&self, headers: Option<HashMap<String, String>>) {
         *self.ivars().download_request_headers.borrow_mut() = headers;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use objc2_foundation::{NSError, NSMutableDictionary};
+
+    fn number(value: i64) -> Retained<NSNumber> {
+        unsafe { msg_send![NSNumber::class(), numberWithLongLong: value] }
+    }
+
+    fn error_with(
+        entries: &[(&NSString, &AnyObject)],
+        domain: &str,
+        code: isize,
+    ) -> Retained<NSObject> {
+        let user_info: Retained<NSMutableDictionary<NSString, AnyObject>> = unsafe {
+            msg_send![
+                NSMutableDictionary::<NSString, AnyObject>::class(),
+                dictionary
+            ]
+        };
+        for (key, value) in entries {
+            unsafe {
+                let _: () = msg_send![&*user_info, setObject: *value, forKey: *key];
+            }
+        }
+
+        let domain = NSString::from_str(domain);
+        unsafe {
+            msg_send![NSError::class(), errorWithDomain: &*domain, code: code, userInfo: &*user_info]
+        }
+    }
+
+    #[test]
+    fn reads_reason_from_sparkle_user_info_keys() {
+        let reason = number(3);
+        let user_initiated = number(1);
+        let suggestion = NSString::from_str("At least macOS 14 is required.");
+        let suggestion_key = NSString::from_str("NSLocalizedRecoverySuggestion");
+
+        let error = error_with(
+            &[
+                (unsafe { SPUNoUpdateFoundReasonKey }, &reason),
+                (unsafe { SPUNoUpdateFoundUserInitiatedKey }, &user_initiated),
+                (&suggestion_key, &suggestion),
+            ],
+            "SUSparkleErrorDomain",
+            1001,
+        );
+
+        let info = no_update_info(&error).expect("a no-update error carries its reason");
+
+        assert_eq!(info.reason, NoUpdateReason::SystemIsTooOld);
+        assert_eq!(info.reason_code, 3);
+        assert!(info.user_initiated);
+        assert!(info.latest_item.is_none());
+        assert_eq!(
+            info.recovery_suggestion.as_deref(),
+            Some("At least macOS 14 is required.")
+        );
+    }
+
+    #[test]
+    fn ignores_errors_without_a_no_update_reason() {
+        let error = error_with(&[], "NSURLErrorDomain", -1005);
+
+        assert!(no_update_info(&error).is_none());
+
+        let payload = error_payload(&error);
+        assert_eq!(payload.code, -1005);
+        assert_eq!(payload.domain, "NSURLErrorDomain");
+        assert!(payload.no_update.is_none());
+    }
+
+    #[test]
+    fn error_payload_attaches_no_update_context() {
+        let reason = number(2);
+        let error = error_with(
+            &[(unsafe { SPUNoUpdateFoundReasonKey }, &reason)],
+            "SUSparkleErrorDomain",
+            1001,
+        );
+
+        let payload = error_payload(&error);
+        let info = payload.no_update.expect("1001 keeps its reason");
+
+        assert_eq!(payload.code, 1001);
+        assert_eq!(info.reason, NoUpdateReason::OnNewerThanLatestVersion);
+        assert!(!info.user_initiated);
+    }
+
+    #[test]
+    fn rejects_a_latest_item_that_is_not_an_appcast_item() {
+        let reason = number(1);
+        let impostor = NSString::from_str("not an appcast item");
+        let error = error_with(
+            &[
+                (unsafe { SPUNoUpdateFoundReasonKey }, &reason),
+                (unsafe { SPULatestAppcastItemFoundKey }, &impostor),
+            ],
+            "SUSparkleErrorDomain",
+            1001,
+        );
+
+        let info = no_update_info(&error).expect("reason is still present");
+
+        assert_eq!(info.reason, NoUpdateReason::OnLatestVersion);
+        assert!(info.latest_item.is_none());
     }
 }
