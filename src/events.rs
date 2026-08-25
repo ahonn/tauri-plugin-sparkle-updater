@@ -63,11 +63,74 @@ pub struct VersionInfo {
     pub version: String,
 }
 
+/// Why Sparkle reported that no update is available.
+///
+/// Mirrors Sparkle's `SPUNoUpdateFoundReason`. A `SUNoUpdateError` (code 1001)
+/// on its own only means "no eligible update in the effective update context",
+/// so consumers must read this before telling a user they are up to date.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NoUpdateReason {
+    /// Sparkle could not attribute the outcome, or reported a reason this
+    /// crate does not map yet. Check [`NoUpdateInfo::reason_code`].
+    #[default]
+    Unknown,
+    /// The host is on the newest version the feed offers.
+    OnLatestVersion,
+    /// The host is newer than anything the feed offers.
+    OnNewerThanLatestVersion,
+    /// A newer version exists but requires a newer macOS.
+    SystemIsTooOld,
+    /// A newer version exists but does not support this macOS.
+    SystemIsTooNew,
+}
+
+impl NoUpdateReason {
+    /// Maps a raw `SPUNoUpdateFoundReason` value, keeping unmapped reasons
+    /// (added by Sparkle versions newer than the bundled framework) distinct
+    /// from a confirmed "you are up to date".
+    pub(crate) fn from_raw(raw: i64) -> Self {
+        match raw {
+            1 => Self::OnLatestVersion,
+            2 => Self::OnNewerThanLatestVersion,
+            3 => Self::SystemIsTooOld,
+            4 => Self::SystemIsTooNew,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// Sparkle's explanation for a no-update outcome, taken from the
+/// `SUNoUpdateError` user info.
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoUpdateInfo {
+    pub reason: NoUpdateReason,
+    /// Raw `SPUNoUpdateFoundReason` value, preserved so reasons this crate
+    /// does not map yet stay diagnosable.
+    pub reason_code: i64,
+    /// Whether the check that produced this outcome was started by the user.
+    pub user_initiated: bool,
+    /// Newest item Sparkle could still see after channel filtering, including
+    /// items rejected for OS requirements. `None` when the feed offered no
+    /// applicable item at all.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_item: Option<UpdateInfo>,
+    /// Sparkle's localized explanation, e.g. which version needs which macOS.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recovery_suggestion: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ErrorPayload {
     pub message: String,
     pub code: i64,
     pub domain: String,
+    /// Present only for `SUNoUpdateError`, so consumers can tell "already on
+    /// the newest version" apart from "no eligible update was found".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub no_update: Option<NoUpdateInfo>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -100,4 +163,79 @@ pub struct UserChoiceInfo {
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleInfo {
     pub delay: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_every_documented_sparkle_reason() {
+        assert_eq!(NoUpdateReason::from_raw(0), NoUpdateReason::Unknown);
+        assert_eq!(NoUpdateReason::from_raw(1), NoUpdateReason::OnLatestVersion);
+        assert_eq!(
+            NoUpdateReason::from_raw(2),
+            NoUpdateReason::OnNewerThanLatestVersion
+        );
+        assert_eq!(NoUpdateReason::from_raw(3), NoUpdateReason::SystemIsTooOld);
+        assert_eq!(NoUpdateReason::from_raw(4), NoUpdateReason::SystemIsTooNew);
+    }
+
+    #[test]
+    fn unmapped_reasons_stay_distinguishable_from_up_to_date() {
+        // Sparkle adds reasons over time; an unknown one must not be reported
+        // as "on the latest version".
+        assert_eq!(NoUpdateReason::from_raw(5), NoUpdateReason::Unknown);
+        assert_eq!(NoUpdateReason::from_raw(-1), NoUpdateReason::Unknown);
+    }
+
+    #[test]
+    fn serializes_reason_as_camel_case() {
+        let json = serde_json::to_value(NoUpdateInfo {
+            reason: NoUpdateReason::SystemIsTooOld,
+            reason_code: 3,
+            user_initiated: true,
+            latest_item: None,
+            recovery_suggestion: Some("At least macOS 14 is required.".to_string()),
+        })
+        .unwrap();
+
+        assert_eq!(json["reason"], "systemIsTooOld");
+        assert_eq!(json["reasonCode"], 3);
+        assert_eq!(json["userInitiated"], true);
+        assert_eq!(json["recoverySuggestion"], "At least macOS 14 is required.");
+        assert!(json.get("latestItem").is_none());
+    }
+
+    #[test]
+    fn error_payload_omits_no_update_for_unrelated_errors() {
+        let json = serde_json::to_value(ErrorPayload {
+            message: "The network connection was lost.".to_string(),
+            code: -1005,
+            domain: "NSURLErrorDomain".to_string(),
+            no_update: None,
+        })
+        .unwrap();
+
+        assert_eq!(json["code"], -1005);
+        assert!(json.get("noUpdate").is_none());
+    }
+
+    #[test]
+    fn error_payload_carries_no_update_context() {
+        let json = serde_json::to_value(ErrorPayload {
+            message: "You’re up to date!".to_string(),
+            code: 1001,
+            domain: "SUSparkleErrorDomain".to_string(),
+            no_update: Some(NoUpdateInfo {
+                reason: NoUpdateReason::OnNewerThanLatestVersion,
+                reason_code: 2,
+                ..Default::default()
+            }),
+        })
+        .unwrap();
+
+        assert_eq!(json["noUpdate"]["reason"], "onNewerThanLatestVersion");
+        assert_eq!(json["noUpdate"]["userInitiated"], false);
+    }
 }
