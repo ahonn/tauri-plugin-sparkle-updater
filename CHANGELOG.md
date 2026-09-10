@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.5...v0.2.6) - 2026-09-10
+
+### Fixed
+
+- *(delegate)* leave install-on-quit updates with Sparkle
+
+### Other
+
+- *(release)* point semver checks at the downloaded Sparkle framework
+
 ## [0.2.5](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.4...v0.2.5) - 2026-08-25
 
 ### Added
