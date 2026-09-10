@@ -229,6 +229,13 @@ define_class!(
             true
         }
 
+        /// Sparkle asks whether the host takes over an update it downloaded
+        /// automatically and staged for install on quit. Returning `YES`
+        /// hands Sparkle's follow-ups to the host: the reminder it shows when
+        /// the app has not quit for `SUScheduledImpatientCheckInterval`, and
+        /// the immediate presentation of critical updates. The plugin has no
+        /// UI to replace them and does not expose the install block, so the
+        /// event stays informational and Sparkle keeps responsibility.
         #[unsafe(method(updater:willInstallUpdateOnQuit:immediateInstallationBlock:))]
         fn updater_will_install_update_on_quit(
             &self,
@@ -239,7 +246,7 @@ define_class!(
             self.emit(EVENT_WILL_INSTALL_UPDATE_ON_QUIT, &VersionInfo {
                 version: item.display_version_string().to_string(),
             });
-            true
+            false
         }
 
         #[unsafe(method(allowedChannelsForUpdater:))]

@@ -378,6 +378,11 @@ export const onWillRelaunchApplication = createListener<WillRelaunchApplicationP
 export const onUserDidMakeChoice = createListener<UserDidMakeChoicePayload>(Events.USER_DID_MAKE_CHOICE);
 export const onWillScheduleUpdateCheck = createListener<WillScheduleUpdateCheckPayload>(Events.WILL_SCHEDULE_UPDATE_CHECK);
 export const onWillNotScheduleUpdateCheck = createListener<WillNotScheduleUpdateCheckPayload>(Events.WILL_NOT_SCHEDULE_UPDATE_CHECK);
+/**
+ * An automatically downloaded update has been staged and will be installed
+ * when the app quits. Informational: Sparkle keeps responsibility for the
+ * install and for reminding the user if the app stays open for a long time.
+ */
 export const onWillInstallUpdateOnQuit = createListener<WillInstallUpdateOnQuitPayload>(Events.WILL_INSTALL_UPDATE_ON_QUIT);
 
 const ALL_EVENTS = Object.values(Events);
