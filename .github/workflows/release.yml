@@ -35,6 +35,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          # release-plz 0.3.164+ runs cargo-semver-checks on a temporary copy
+          # of the crate, so build.rs cannot find the framework downloaded
+          # into the workspace unless told where it is.
+          SPARKLE_FRAMEWORK_PATH: ${{ github.workspace }}
 
   publish-npm:
     name: Publish to npm
