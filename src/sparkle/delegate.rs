@@ -258,17 +258,7 @@ define_class!(
             _updater: &NSObject,
         ) -> *mut NSSet<NSString> {
             let channels = self.ivars().allowed_channels.borrow();
-            match channels.as_ref() {
-                Some(ch) => {
-                    let set = NSMutableSet::<NSString>::new();
-                    for channel in ch {
-                        let ns_str = NSString::from_str(channel);
-                        let _: () = unsafe { msg_send![&set, addObject: &*ns_str] };
-                    }
-                    Retained::autorelease_return(Retained::into_super(set))
-                }
-                None => std::ptr::null_mut(),
-            }
+            Retained::autorelease_return(channel_set(channels.as_deref()))
         }
 
         #[unsafe(method(feedURLStringForUpdater:))]
@@ -361,6 +351,18 @@ define_class!(
         }
     }
 );
+
+/// The channels Sparkle may offer updates from. Sparkle does not accept nil
+/// here (it logs an error and treats it as empty), so no configured channels
+/// is an empty set: only items without a channel.
+fn channel_set(channels: Option<&[String]>) -> Retained<NSSet<NSString>> {
+    let set = NSMutableSet::<NSString>::new();
+    for channel in channels.unwrap_or_default() {
+        let ns_str = NSString::from_str(channel);
+        let _: () = unsafe { msg_send![&set, addObject: &*ns_str] };
+    }
+    Retained::into_super(set)
+}
 
 fn nserror_description(error: &NSObject) -> String {
     let desc: Retained<NSString> = unsafe { msg_send![error, localizedDescription] };
@@ -674,6 +676,21 @@ mod tests {
         unsafe {
             msg_send![NSError::class(), errorWithDomain: &*domain, code: code, userInfo: &*user_info]
         }
+    }
+
+    #[test]
+    fn allowed_channels_are_an_empty_set_rather_than_nil() {
+        let none = channel_set(None);
+        let count: usize = unsafe { msg_send![&*none, count] };
+        assert_eq!(count, 0);
+
+        let channels = vec!["beta".to_string(), "rc".to_string()];
+        let some = channel_set(Some(&channels));
+        let count: usize = unsafe { msg_send![&*some, count] };
+        let rc = NSString::from_str("rc");
+        let has_rc: bool = unsafe { msg_send![&*some, containsObject: &*rc] };
+        assert_eq!(count, 2);
+        assert!(has_rc);
     }
 
     #[test]
