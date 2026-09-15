@@ -83,6 +83,9 @@ pub enum NoUpdateReason {
     SystemIsTooOld,
     /// A newer version exists but does not support this macOS.
     SystemIsTooNew,
+    /// A newer version exists but requires an Apple silicon Mac, and this is
+    /// an Intel Mac.
+    HardwareDoesNotSupportArm64,
 }
 
 impl NoUpdateReason {
@@ -95,6 +98,7 @@ impl NoUpdateReason {
             2 => Self::OnNewerThanLatestVersion,
             3 => Self::SystemIsTooOld,
             4 => Self::SystemIsTooNew,
+            5 => Self::HardwareDoesNotSupportArm64,
             _ => Self::Unknown,
         }
     }
@@ -199,13 +203,17 @@ mod tests {
         );
         assert_eq!(NoUpdateReason::from_raw(3), NoUpdateReason::SystemIsTooOld);
         assert_eq!(NoUpdateReason::from_raw(4), NoUpdateReason::SystemIsTooNew);
+        assert_eq!(
+            NoUpdateReason::from_raw(5),
+            NoUpdateReason::HardwareDoesNotSupportArm64
+        );
     }
 
     #[test]
     fn unmapped_reasons_stay_distinguishable_from_up_to_date() {
         // Sparkle adds reasons over time; an unknown one must not be reported
         // as "on the latest version".
-        assert_eq!(NoUpdateReason::from_raw(5), NoUpdateReason::Unknown);
+        assert_eq!(NoUpdateReason::from_raw(6), NoUpdateReason::Unknown);
         assert_eq!(NoUpdateReason::from_raw(-1), NoUpdateReason::Unknown);
     }
 
@@ -225,6 +233,13 @@ mod tests {
         assert_eq!(json["userInitiated"], true);
         assert_eq!(json["recoverySuggestion"], "At least macOS 14 is required.");
         assert!(json.get("latestItem").is_none());
+
+        // The digits must stay attached to "Arm" so the string matches the
+        // guest-js `NoUpdateReason` union.
+        assert_eq!(
+            serde_json::to_value(NoUpdateReason::HardwareDoesNotSupportArm64).unwrap(),
+            "hardwareDoesNotSupportArm64"
+        );
     }
 
     #[test]
