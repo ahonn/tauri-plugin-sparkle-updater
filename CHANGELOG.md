@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.6...v0.2.7) - 2026-09-15
+
+### Added
+
+- *(events)* report the error chain behind Sparkle failures
+
+### Fixed
+
+- *(events)* follow the underlying error chain eight levels deep
+
 ## [0.2.6](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.5...v0.2.6) - 2026-09-10
 
 ### Fixed
