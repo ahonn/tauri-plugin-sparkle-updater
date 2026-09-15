@@ -383,9 +383,10 @@ fn nserror_failure_reason(error: &NSObject) -> Option<String> {
     reason.map(|s| s.to_string())
 }
 
-/// How far to follow `NSUnderlyingErrorKey`. Sparkle nests a couple of levels
-/// at most; the cap only guards against a chain that loops back on itself.
-const MAX_UNDERLYING_ERRORS: usize = 4;
+/// How far to follow `NSUnderlyingErrorKey`. A code signing rejection already
+/// nests four levels deep (validation, signature, code signing check,
+/// OSStatus); the cap only guards against a chain that loops back on itself.
+const MAX_UNDERLYING_ERRORS: usize = 8;
 
 /// The `NSError` stored under `NSUnderlyingErrorKey`, if it is one.
 fn underlying_error(error: &NSObject) -> Option<Retained<NSObject>> {
@@ -765,7 +766,7 @@ mod tests {
     #[test]
     fn a_long_underlying_chain_is_capped() {
         let mut error = error_with(&[], "NSPOSIXErrorDomain", 1);
-        for code in 2..=7 {
+        for code in 2..=12 {
             error = error_with(
                 &[(unsafe { NSUnderlyingErrorKey }, &error)],
                 "SUSparkleErrorDomain",
