@@ -26,7 +26,7 @@ jobs:
 
       - name: Download Sparkle framework
         run: |
-          curl -L -o sparkle.tar.xz https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz
+          curl -L -o sparkle.tar.xz https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-2.9.6.tar.xz
           tar -xf sparkle.tar.xz Sparkle.framework
           rm sparkle.tar.xz
 
