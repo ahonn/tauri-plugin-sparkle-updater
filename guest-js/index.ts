@@ -42,7 +42,8 @@ export type NoUpdateReason =
   | 'onLatestVersion'
   | 'onNewerThanLatestVersion'
   | 'systemIsTooOld'
-  | 'systemIsTooNew';
+  | 'systemIsTooNew'
+  | 'hardwareDoesNotSupportArm64';
 
 export interface NoUpdateInfo {
   reason: NoUpdateReason;

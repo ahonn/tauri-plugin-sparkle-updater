@@ -29,7 +29,7 @@ Add `SPARKLE_PRIVATE_KEY` to repository secrets (Settings → Secrets → Action
 ```yaml
 - name: Download Sparkle tools
   run: |
-    curl -L -o sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/2.8.1/Sparkle-2.8.1.tar.xz"
+    curl -L -o sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-2.9.6.tar.xz"
     mkdir -p sparkle-tools
     tar -xf sparkle.tar.xz -C sparkle-tools
     chmod +x sparkle-tools/bin/*

@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-VERSION="2.8.1"
-EXPECTED_SHA256="5cddb7695674ef7704268f38eccaee80e3accbf19e61c1689efff5b6116d85be"
+VERSION="2.9.6"
+EXPECTED_SHA256="52bf9e88cdd972fc0c81501377a880e90d47031bd8ca5462488f843e2609e192"
 
 cd "$(pwd "$0")/src-tauri"
 
