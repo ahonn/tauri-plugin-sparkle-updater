@@ -131,6 +131,26 @@ pub struct ErrorPayload {
     /// the newest version" apart from "no eligible update was found".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub no_update: Option<NoUpdateInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recovery_suggestion: Option<String>,
+    /// The errors this one wraps, outermost first. Sparkle reports most
+    /// installer failures as a generic `SUInstallationError` (4005) whose
+    /// actual cause is only found here.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub underlying: Vec<UnderlyingError>,
+}
+
+/// One link of an `NSError`'s `NSUnderlyingErrorKey` chain.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnderlyingError {
+    pub message: String,
+    pub code: i64,
+    pub domain: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_reason: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -214,11 +234,44 @@ mod tests {
             code: -1005,
             domain: "NSURLErrorDomain".to_string(),
             no_update: None,
+            failure_reason: None,
+            recovery_suggestion: None,
+            underlying: vec![],
         })
         .unwrap();
 
         assert_eq!(json["code"], -1005);
         assert!(json.get("noUpdate").is_none());
+        assert!(json.get("failureReason").is_none());
+        assert!(json.get("recoverySuggestion").is_none());
+        assert!(json.get("underlying").is_none());
+    }
+
+    #[test]
+    fn error_payload_serializes_its_underlying_chain() {
+        let json = serde_json::to_value(ErrorPayload {
+            message: "An error occurred while running the updater.".to_string(),
+            code: 4005,
+            domain: "SUSparkleErrorDomain".to_string(),
+            no_update: None,
+            failure_reason: None,
+            recovery_suggestion: Some("Please try again later.".to_string()),
+            underlying: vec![UnderlyingError {
+                message: "You don't have permission.".to_string(),
+                code: 513,
+                domain: "NSCocoaErrorDomain".to_string(),
+                failure_reason: Some("The folder is not writable.".to_string()),
+            }],
+        })
+        .unwrap();
+
+        assert_eq!(json["recoverySuggestion"], "Please try again later.");
+        assert_eq!(json["underlying"][0]["code"], 513);
+        assert_eq!(json["underlying"][0]["domain"], "NSCocoaErrorDomain");
+        assert_eq!(
+            json["underlying"][0]["failureReason"],
+            "The folder is not writable."
+        );
     }
 
     #[test]
@@ -232,6 +285,9 @@ mod tests {
                 reason_code: 2,
                 ..Default::default()
             }),
+            failure_reason: None,
+            recovery_suggestion: None,
+            underlying: vec![],
         })
         .unwrap();
 

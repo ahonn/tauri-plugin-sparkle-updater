@@ -6,7 +6,10 @@ use log::error;
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObject};
 use objc2::{define_class, msg_send, ClassType, DeclaredClass, MainThreadMarker, MainThreadOnly};
-use objc2_foundation::{NSArray, NSDictionary, NSMutableSet, NSNumber, NSSet, NSString, NSURL};
+use objc2_foundation::{
+    NSArray, NSDictionary, NSError, NSMutableSet, NSNumber, NSSet, NSString, NSUnderlyingErrorKey,
+    NSURL,
+};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -14,7 +17,7 @@ use super::bindings::SPUAppcastItem;
 use crate::events::UpdateInfo;
 use crate::events::{
     DownloadFailedInfo, EmptyPayload, ErrorPayload, NoUpdateInfo, NoUpdateReason, ScheduleInfo,
-    UpdateCycleInfo, UserChoiceInfo, VersionInfo, EVENT_DID_ABORT_WITH_ERROR,
+    UnderlyingError, UpdateCycleInfo, UserChoiceInfo, VersionInfo, EVENT_DID_ABORT_WITH_ERROR,
     EVENT_DID_DOWNLOAD_UPDATE, EVENT_DID_EXTRACT_UPDATE, EVENT_DID_FIND_VALID_UPDATE,
     EVENT_DID_FINISH_LOADING_APPCAST, EVENT_DID_FINISH_UPDATE_CYCLE, EVENT_DID_NOT_FIND_UPDATE,
     EVENT_FAILED_TO_DOWNLOAD_UPDATE, EVENT_USER_DID_CANCEL_DOWNLOAD, EVENT_USER_DID_MAKE_CHOICE,
@@ -375,6 +378,45 @@ fn nserror_recovery_suggestion(error: &NSObject) -> Option<String> {
     suggestion.map(|s| s.to_string())
 }
 
+fn nserror_failure_reason(error: &NSObject) -> Option<String> {
+    let reason: Option<Retained<NSString>> = unsafe { msg_send![error, localizedFailureReason] };
+    reason.map(|s| s.to_string())
+}
+
+/// How far to follow `NSUnderlyingErrorKey`. A code signing rejection already
+/// nests four levels deep (validation, signature, code signing check,
+/// OSStatus); the cap only guards against a chain that loops back on itself.
+const MAX_UNDERLYING_ERRORS: usize = 8;
+
+/// The `NSError` stored under `NSUnderlyingErrorKey`, if it is one.
+fn underlying_error(error: &NSObject) -> Option<Retained<NSObject>> {
+    let user_info: Option<Retained<NSDictionary<NSString, AnyObject>>> =
+        unsafe { msg_send![error, userInfo] };
+    let user_info = user_info?;
+    let value = user_info_value(&user_info, unsafe { NSUnderlyingErrorKey })?;
+    let is_error: bool = unsafe { msg_send![&*value, isKindOfClass: NSError::class()] };
+    // Checked above, so the object really is an NSError.
+    is_error.then(|| unsafe { Retained::cast_unchecked(value) })
+}
+
+fn underlying_errors(error: &NSObject) -> Vec<UnderlyingError> {
+    let mut chain = Vec::new();
+    let mut next = underlying_error(error);
+    while let Some(current) = next {
+        if chain.len() == MAX_UNDERLYING_ERRORS {
+            break;
+        }
+        chain.push(UnderlyingError {
+            message: nserror_description(&current),
+            code: unsafe { msg_send![&*current, code] },
+            domain: nserror_domain(&current),
+            failure_reason: nserror_failure_reason(&current),
+        });
+        next = underlying_error(&current);
+    }
+    chain
+}
+
 // Sparkle exports these user info keys; linking them keeps the lookup in step
 // with the framework instead of hardcoding its string values.
 #[link(name = "Sparkle", kind = "framework")]
@@ -439,6 +481,9 @@ fn error_payload(error: &NSObject) -> ErrorPayload {
         code: unsafe { msg_send![error, code] },
         domain: nserror_domain(error),
         no_update: no_update_info(error),
+        failure_reason: nserror_failure_reason(error),
+        recovery_suggestion: nserror_recovery_suggestion(error),
+        underlying: underlying_errors(error),
     }
 }
 
@@ -687,6 +732,64 @@ mod tests {
         assert_eq!(payload.code, 1001);
         assert_eq!(info.reason, NoUpdateReason::OnNewerThanLatestVersion);
         assert!(!info.user_initiated);
+    }
+
+    #[test]
+    fn error_payload_follows_the_underlying_error_chain() {
+        let reason_key = NSString::from_str("NSLocalizedFailureReason");
+        let reason = NSString::from_str("The folder is not writable.");
+        let cause = error_with(&[(&reason_key, &reason)], "NSCocoaErrorDomain", 513);
+        let middle = error_with(
+            &[(unsafe { NSUnderlyingErrorKey }, &cause)],
+            "SUSparkleErrorDomain",
+            4001,
+        );
+        let error = error_with(
+            &[(unsafe { NSUnderlyingErrorKey }, &middle)],
+            "SUSparkleErrorDomain",
+            4005,
+        );
+
+        let payload = error_payload(&error);
+
+        assert_eq!(payload.code, 4005);
+        assert_eq!(payload.underlying.len(), 2);
+        assert_eq!(payload.underlying[0].code, 4001);
+        assert_eq!(payload.underlying[1].code, 513);
+        assert_eq!(payload.underlying[1].domain, "NSCocoaErrorDomain");
+        assert_eq!(
+            payload.underlying[1].failure_reason.as_deref(),
+            Some("The folder is not writable.")
+        );
+    }
+
+    #[test]
+    fn a_long_underlying_chain_is_capped() {
+        let mut error = error_with(&[], "NSPOSIXErrorDomain", 1);
+        for code in 2..=12 {
+            error = error_with(
+                &[(unsafe { NSUnderlyingErrorKey }, &error)],
+                "SUSparkleErrorDomain",
+                code,
+            );
+        }
+
+        assert_eq!(
+            error_payload(&error).underlying.len(),
+            MAX_UNDERLYING_ERRORS
+        );
+    }
+
+    #[test]
+    fn a_non_error_under_the_underlying_key_is_ignored() {
+        let impostor = NSString::from_str("not an error");
+        let error = error_with(
+            &[(unsafe { NSUnderlyingErrorKey }, &impostor)],
+            "SUSparkleErrorDomain",
+            4005,
+        );
+
+        assert!(error_payload(&error).underlying.is_empty());
     }
 
     #[test]
