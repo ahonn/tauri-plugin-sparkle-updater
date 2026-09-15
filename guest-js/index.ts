@@ -57,12 +57,26 @@ export interface NoUpdateInfo {
   recoverySuggestion?: string;
 }
 
+export interface UnderlyingError {
+  message: string;
+  code: number;
+  domain: string;
+  failureReason?: string;
+}
+
 export interface UpdateError {
   message: string;
   code: number;
   domain: string;
   /** Present only for no-update outcomes. */
   noUpdate?: NoUpdateInfo;
+  failureReason?: string;
+  recoverySuggestion?: string;
+  /**
+   * The errors this one wraps, outermost first. Sparkle reports most installer
+   * failures as a generic `SUInstallationError` (4005) whose cause is only here.
+   */
+  underlying?: UnderlyingError[];
 }
 
 export interface UpdateCycleInfo {
