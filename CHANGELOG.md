@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.8...v0.2.9) - 2026-09-16
+
+### Fixed
+
+- *(delegate)* return an empty channel set instead of nil
+
 ## [0.2.8](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.7...v0.2.8) - 2026-09-15
 
 ### Added
