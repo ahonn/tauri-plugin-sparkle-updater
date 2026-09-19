@@ -27,6 +27,8 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - name: Test release eligibility
+        run: node --test scripts/*.test.mjs
       - run: pnpm build
       - name: Check npm package contents
         run: npm pack --dry-run
