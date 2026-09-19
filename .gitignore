@@ -24,7 +24,7 @@ devenv.local.yaml
 # direnv
 .direnv
 
-# Sparkle framework (downloaded automatically by build.rs)
+# Sparkle framework (downloaded explicitly with scripts/download-sparkle.sh)
 Sparkle.framework/
 
 # pre-commit

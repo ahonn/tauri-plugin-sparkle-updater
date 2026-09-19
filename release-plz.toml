@@ -1,0 +1,6 @@
+# Preserve the plugin's existing tags after adding a second publishable crate.
+# sparkle-updater uses the workspace default: sparkle-updater-v{{ version }}.
+[[package]]
+name = "tauri-plugin-sparkle-updater"
+git_tag_name = "v{{ version }}"
+git_release_name = "v{{ version }}"

@@ -6,6 +6,15 @@
 
 A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) update framework for macOS applications.
 
+## Rust workspace
+
+This repository contains two layers:
+
+- [`sparkle-updater`](crates/sparkle-updater): a macOS Rust library with main-thread ownership, typed events, deferred relaunch, and Gentle Reminders hooks. Use it directly from GPUI or another native Rust host.
+- `tauri-plugin-sparkle-updater` (this root package): Tauri commands, JS event forwarding, and main-thread dispatch over that library. Existing JS event names and payloads remain unchanged.
+
+Native objects stay on the main thread. The adapter passes registry IDs between threads; it does not mark Objective-C pointers as `Send`/`Sync`.
+
 ## Features
 
 - Native macOS update UI via Sparkle framework
@@ -17,7 +26,7 @@ A Tauri plugin that integrates the [Sparkle](https://sparkle-project.org/) updat
 
 ## Requirements
 
-- macOS 10.13+ (High Sierra)
+- macOS 10.13+ (the pinned Sparkle framework minimum; the host may require a newer version)
 - Tauri 2.x
 - Sparkle framework 2.9.6
 
@@ -39,7 +48,9 @@ npm install tauri-plugin-sparkle-updater-api
 
 ```bash
 # Download Sparkle framework
-curl -fsSL https://raw.githubusercontent.com/ahonn/tauri-plugin-sparkle-updater/refs/heads/master/scripts/download-sparkle.sh | bash
+curl -fsSLo download-sparkle.sh https://raw.githubusercontent.com/ahonn/tauri-plugin-sparkle-updater/refs/heads/master/scripts/download-sparkle.sh
+bash download-sparkle.sh ./src-tauri
+export SPARKLE_FRAMEWORK_PATH="$PWD/src-tauri"
 
 # Generate signing keys (saved to Keychain)
 ./src-tauri/sparkle-bin/generate_keys

@@ -1,18 +1,47 @@
 name: CI
 
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
+  workflow_call:
+  workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  javascript:
+    name: JavaScript API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Check npm package contents
+        run: npm pack --dry-run
+
   test:
-    name: Test
-    runs-on: macos-latest
+    name: Rust (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    env:
+      CARGO_TERM_COLOR: always
+      SPARKLE_FRAMEWORK_PATH: ${{ github.workspace }}
+      DYLD_FRAMEWORK_PATH: ${{ github.workspace }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -26,21 +55,31 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Download Sparkle framework
-        run: |
-          curl -L -o sparkle.tar.xz https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-2.9.6.tar.xz
-          tar -xf sparkle.tar.xz Sparkle.framework
-          rm sparkle.tar.xz
+        run: bash scripts/download-sparkle.sh "$GITHUB_WORKSPACE"
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+      # Test the core alone so Tauri's unified dependency features cannot hide gaps.
+      - name: Test standalone core and native callbacks
+        run: cargo test -p sparkle-updater
 
-      - name: Run tests
-        run: cargo test --verbose
-        env:
-          DYLD_FRAMEWORK_PATH: ${{ github.workspace }}
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run workspace tests
+        run: cargo test --workspace
 
       - name: Build documentation
-        run: cargo doc --no-deps
+        run: cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Check Tauri example
+        run: cargo check --manifest-path examples/tauri-app/src-tauri/Cargo.toml
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
+      # The plugin's registry package cannot resolve the new core until its first release.
+      - name: Verify standalone core package
+        run: cargo package -p sparkle-updater --allow-dirty

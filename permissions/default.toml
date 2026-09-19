@@ -41,5 +41,7 @@ permissions = [
     "allow-set-should-proceed-with-update",
     "allow-decryption-password",
     "allow-set-decryption-password",
+    "allow-download-request-headers",
+    "allow-set-download-request-headers",
     "allow-last-found-update"
 ]

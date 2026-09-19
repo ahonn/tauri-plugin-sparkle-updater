@@ -199,3 +199,21 @@ impl SPUAppcastItem {
         pub fn item_description_format(&self) -> Option<Retained<NSString>>;
     );
 }
+
+extern_class!(
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "SPUUserUpdateState"]
+    #[derive(Debug)]
+    pub struct SPUUserUpdateState;
+);
+
+impl SPUUserUpdateState {
+    extern_methods!(
+        #[unsafe(method(stage))]
+        pub fn stage(&self) -> isize;
+
+        #[unsafe(method(userInitiated))]
+        pub fn user_initiated(&self) -> bool;
+    );
+}
