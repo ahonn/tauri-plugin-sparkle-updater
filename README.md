@@ -155,3 +155,7 @@ builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
 ## License
 
 MIT
+
+## Repository releases
+
+See [the release procedure](docs/RELEASING.md) for independent crate/npm versions, release-PR preparation, and retry behavior.

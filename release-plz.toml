@@ -1,6 +1,40 @@
-# Preserve the plugin's existing tags after adding a second publishable crate.
-# sparkle-updater uses the workspace default: sparkle-updater-v{{ version }}.
+[workspace]
+# Feature PRs prepare versions; only a merged release PR can publish them.
+release_always = false
+git_release_latest = false
+pr_body = """
+## Rust packages
+{% for release in releases %}
+### {{ release.package }} {{ release.next_version }}
+{% if release.breaking_changes %}
+Breaking API changes reported by the Rust compatibility check:
+
+```text
+{{ release.breaking_changes }}
+```
+{% endif %}
+{% if release.changelog %}
+{{ release.changelog }}
+{% endif %}
+{% endfor %}
+## npm release preparation
+
+- [ ] Review JS API changes since the published npm version. If needed, choose an independent version in `package.json` and update `CHANGELOG.npm.md` in this PR.
+- [ ] Run the JavaScript build and package preview; verify the new exports and declarations.
+- [ ] Recheck manual npm edits if release-plz updates this PR before merging.
+
+See [the release procedure](docs/RELEASING.md). Merging this PR enables publication after CI passes.
+"""
+
+[[package]]
+name = "sparkle-updater"
+git_tag_name = "sparkle-updater-v{{ version }}"
+git_release_name = "sparkle-updater v{{ version }}"
+git_release_latest = false
+
 [[package]]
 name = "tauri-plugin-sparkle-updater"
+# Retain the plugin's existing tag namespace.
 git_tag_name = "v{{ version }}"
-git_release_name = "v{{ version }}"
+git_release_name = "tauri-plugin-sparkle-updater v{{ version }}"
+git_release_latest = true
