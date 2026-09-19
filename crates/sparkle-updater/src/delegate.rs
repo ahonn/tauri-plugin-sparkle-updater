@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::rc::Rc;
 
-use log::error;
+use block2::Block;
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObject};
 use objc2::{define_class, msg_send, ClassType, DeclaredClass, MainThreadMarker, MainThreadOnly};
@@ -10,28 +10,21 @@ use objc2_foundation::{
     NSArray, NSDictionary, NSError, NSMutableSet, NSNumber, NSSet, NSString, NSUnderlyingErrorKey,
     NSURL,
 };
-use serde::Serialize;
-use serde_json::Value;
 
-use super::bindings::SPUAppcastItem;
-use crate::events::UpdateInfo;
+use super::bindings::{SPUAppcastItem, SPUUserUpdateState};
+use crate::callbacks::{postpone_relaunch, GentleReminders, RelaunchHandler};
 use crate::events::{
-    DownloadFailedInfo, EmptyPayload, ErrorPayload, NoUpdateInfo, NoUpdateReason, ScheduleInfo,
-    UnderlyingError, UpdateCycleInfo, UserChoiceInfo, VersionInfo, EVENT_DID_ABORT_WITH_ERROR,
-    EVENT_DID_DOWNLOAD_UPDATE, EVENT_DID_EXTRACT_UPDATE, EVENT_DID_FIND_VALID_UPDATE,
-    EVENT_DID_FINISH_LOADING_APPCAST, EVENT_DID_FINISH_UPDATE_CYCLE, EVENT_DID_NOT_FIND_UPDATE,
-    EVENT_FAILED_TO_DOWNLOAD_UPDATE, EVENT_USER_DID_CANCEL_DOWNLOAD, EVENT_USER_DID_MAKE_CHOICE,
-    EVENT_WILL_DOWNLOAD_UPDATE, EVENT_WILL_EXTRACT_UPDATE, EVENT_WILL_INSTALL_UPDATE,
-    EVENT_WILL_INSTALL_UPDATE_ON_QUIT, EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK,
-    EVENT_WILL_RELAUNCH_APPLICATION, EVENT_WILL_SCHEDULE_UPDATE_CHECK,
+    DownloadFailedInfo, ErrorPayload, NoUpdateInfo, NoUpdateReason, ScheduleInfo, UnderlyingError,
+    UpdateCycleInfo, UpdateEvent, UpdateInfo, UserChoiceInfo, UserUpdateStage, UserUpdateState,
+    VersionInfo,
 };
 
-pub type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
-pub type EventCallback = Arc<dyn Fn(&str, &Value) + Send + Sync>;
+pub type EventCallback = Rc<dyn Fn(UpdateEvent)>;
 
 pub struct DelegateIvars {
-    emitter: RefCell<Option<EventEmitter>>,
     event_callback: RefCell<Option<EventCallback>>,
+    relaunch_handler: RefCell<Option<RelaunchHandler>>,
+    gentle_reminders: RefCell<Option<Rc<dyn GentleReminders>>>,
     allowed_channels: RefCell<Option<Vec<String>>>,
     feed_url_override: RefCell<Option<String>>,
     feed_parameters: RefCell<Option<HashMap<String, String>>>,
@@ -47,7 +40,7 @@ pub struct DelegateIvars {
 define_class!(
     #[unsafe(super(NSObject))]
     #[thread_kind = MainThreadOnly]
-    #[name = "TauriSparkleDelegate"]
+    #[name = "RustSparkleUpdaterDelegate"]
     #[ivars = DelegateIvars]
     pub struct SparkleDelegate;
 
@@ -58,7 +51,7 @@ define_class!(
             _updater: &NSObject,
             _appcast: &NSObject,
         ) {
-            self.emit(EVENT_DID_FINISH_LOADING_APPCAST, &EmptyPayload {});
+            self.emit(UpdateEvent::DidFinishLoadingAppcast);
         }
 
         #[unsafe(method(updater:didFindValidUpdate:))]
@@ -70,7 +63,7 @@ define_class!(
             let update_info = update_info_from_item(item);
 
             *self.ivars().last_found_update.borrow_mut() = Some(update_info.clone());
-            self.emit(EVENT_DID_FIND_VALID_UPDATE, &update_info);
+            self.emit(UpdateEvent::DidFindValidUpdate(update_info));
         }
 
         // Sparkle prefers this over `updaterDidNotFindUpdate:`, and it is the
@@ -79,10 +72,7 @@ define_class!(
         // newer than the feed, nothing eligible -- to "up to date".
         #[unsafe(method(updaterDidNotFindUpdate:error:))]
         fn updater_did_not_find_update(&self, _updater: &NSObject, error: &NSObject) {
-            self.emit(
-                EVENT_DID_NOT_FIND_UPDATE,
-                &no_update_info(error).unwrap_or_default(),
-            );
+            self.emit(UpdateEvent::DidNotFindUpdate(no_update_info(error).unwrap_or_default()));
         }
 
         #[unsafe(method(updater:willDownloadUpdate:withRequest:))]
@@ -101,9 +91,9 @@ define_class!(
                 }
             }
 
-            self.emit(EVENT_WILL_DOWNLOAD_UPDATE, &VersionInfo {
+            self.emit(UpdateEvent::WillDownloadUpdate(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updater:didDownloadUpdate:))]
@@ -112,9 +102,9 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            self.emit(EVENT_DID_DOWNLOAD_UPDATE, &VersionInfo {
+            self.emit(UpdateEvent::DidDownloadUpdate(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updater:willInstallUpdate:))]
@@ -123,9 +113,9 @@ define_class!(
             _updater: &NSObject,
             item: &SPUAppcastItem,
         ) {
-            self.emit(EVENT_WILL_INSTALL_UPDATE, &VersionInfo {
+            self.emit(UpdateEvent::WillInstallUpdate(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updater:didAbortWithError:))]
@@ -134,7 +124,7 @@ define_class!(
             _updater: &NSObject,
             ns_error: &NSObject,
         ) {
-            self.emit(EVENT_DID_ABORT_WITH_ERROR, &error_payload(ns_error));
+            self.emit(UpdateEvent::DidAbortWithError(error_payload(ns_error)));
         }
 
         #[unsafe(method(updater:didFinishUpdateCycleForUpdateCheck:error:))]
@@ -149,10 +139,10 @@ define_class!(
                 1 => "background",
                 _ => "information",
             };
-            self.emit(EVENT_DID_FINISH_UPDATE_CYCLE, &UpdateCycleInfo {
+            self.emit(UpdateEvent::DidFinishUpdateCycle(UpdateCycleInfo {
                 update_check: update_check_str.to_string(),
                 error: error.map(error_payload),
-            });
+            }));
         }
 
         #[unsafe(method(updater:failedToDownloadUpdate:error:))]
@@ -162,34 +152,34 @@ define_class!(
             item: &SPUAppcastItem,
             ns_error: &NSObject,
         ) {
-            self.emit(EVENT_FAILED_TO_DOWNLOAD_UPDATE, &DownloadFailedInfo {
+            self.emit(UpdateEvent::FailedToDownloadUpdate(DownloadFailedInfo {
                 version: item.display_version_string().to_string(),
                 error: error_payload(ns_error),
-            });
+            }));
         }
 
         #[unsafe(method(userDidCancelDownload:))]
         fn user_did_cancel_download(&self, _updater: &NSObject) {
-            self.emit(EVENT_USER_DID_CANCEL_DOWNLOAD, &EmptyPayload {});
+            self.emit(UpdateEvent::UserDidCancelDownload);
         }
 
         #[unsafe(method(updater:willExtractUpdate:))]
         fn updater_will_extract_update(&self, _updater: &NSObject, item: &SPUAppcastItem) {
-            self.emit(EVENT_WILL_EXTRACT_UPDATE, &VersionInfo {
+            self.emit(UpdateEvent::WillExtractUpdate(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updater:didExtractUpdate:))]
         fn updater_did_extract_update(&self, _updater: &NSObject, item: &SPUAppcastItem) {
-            self.emit(EVENT_DID_EXTRACT_UPDATE, &VersionInfo {
+            self.emit(UpdateEvent::DidExtractUpdate(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updaterWillRelaunchApplication:))]
         fn updater_will_relaunch_application(&self, _updater: &NSObject) {
-            self.emit(EVENT_WILL_RELAUNCH_APPLICATION, &EmptyPayload {});
+            self.emit(UpdateEvent::WillRelaunchApplication);
         }
 
         #[unsafe(method(updater:userDidMakeChoice:forUpdate:state:))]
@@ -198,33 +188,29 @@ define_class!(
             _updater: &NSObject,
             choice: isize,
             item: &SPUAppcastItem,
-            state: isize,
+            state: &SPUUserUpdateState,
         ) {
             let choice_str = match choice {
                 0 => "skip",
                 1 => "install",
                 _ => "dismiss",
             };
-            let stage_str = match state {
-                0 => "notDownloaded",
-                1 => "downloaded",
-                _ => "installing",
-            };
-            self.emit(EVENT_USER_DID_MAKE_CHOICE, &UserChoiceInfo {
+            let stage_str = UserUpdateStage::from_raw(state.stage()).wire_name();
+            self.emit(UpdateEvent::UserDidMakeChoice(UserChoiceInfo {
                 choice: choice_str.to_string(),
                 version: item.display_version_string().to_string(),
                 stage: stage_str.to_string(),
-            });
+            }));
         }
 
         #[unsafe(method(updater:willScheduleUpdateCheckAfterDelay:))]
         fn updater_will_schedule_update_check(&self, _updater: &NSObject, delay: f64) {
-            self.emit(EVENT_WILL_SCHEDULE_UPDATE_CHECK, &ScheduleInfo { delay });
+            self.emit(UpdateEvent::WillScheduleUpdateCheck(ScheduleInfo { delay }));
         }
 
         #[unsafe(method(updaterWillNotScheduleUpdateCheck:))]
         fn updater_will_not_schedule_update_check(&self, _updater: &NSObject) {
-            self.emit(EVENT_WILL_NOT_SCHEDULE_UPDATE_CHECK, &EmptyPayload {});
+            self.emit(UpdateEvent::WillNotScheduleUpdateCheck);
         }
 
         #[unsafe(method(updaterShouldPromptForPermissionToCheckForUpdates:))]
@@ -236,20 +222,82 @@ define_class!(
         /// automatically and staged for install on quit. Returning `YES`
         /// hands Sparkle's follow-ups to the host: the reminder it shows when
         /// the app has not quit for `SUScheduledImpatientCheckInterval`, and
-        /// the immediate presentation of critical updates. The plugin has no
-        /// UI to replace them and does not expose the install block, so the
-        /// event stays informational and Sparkle keeps responsibility.
+        /// the immediate presentation of critical updates. This notification
+        /// remains informational; custom presentation uses the standard user
+        /// driver's Gentle Reminders callbacks instead.
         #[unsafe(method(updater:willInstallUpdateOnQuit:immediateInstallationBlock:))]
         fn updater_will_install_update_on_quit(
             &self,
             _updater: &NSObject,
             item: &SPUAppcastItem,
-            _handler: &NSObject,
+            _handler: &Block<dyn Fn()>,
         ) -> bool {
-            self.emit(EVENT_WILL_INSTALL_UPDATE_ON_QUIT, &VersionInfo {
+            self.emit(UpdateEvent::WillInstallUpdateOnQuit(VersionInfo {
                 version: item.display_version_string().to_string(),
-            });
+            }));
             false
+        }
+
+        #[unsafe(method(updater:shouldPostponeRelaunchForUpdate:untilInvokingBlock:))]
+        fn updater_should_postpone_relaunch(
+            &self,
+            _updater: &NSObject,
+            item: &SPUAppcastItem,
+            handler: &Block<dyn Fn()>,
+        ) -> bool {
+            let callback = self.ivars().relaunch_handler.borrow().clone();
+            callback.is_some_and(|callback| {
+                postpone_relaunch(&callback, update_info_from_item(item), handler)
+            })
+        }
+
+        #[unsafe(method(supportsGentleScheduledUpdateReminders))]
+        fn supports_gentle_scheduled_update_reminders(&self) -> bool {
+            self.ivars().gentle_reminders.borrow().is_some()
+        }
+
+        #[unsafe(method(standardUserDriverShouldHandleShowingScheduledUpdate:andInImmediateFocus:))]
+        fn should_handle_showing_scheduled_update(
+            &self,
+            item: &SPUAppcastItem,
+            immediate_focus: bool,
+        ) -> bool {
+            let reminders = self.ivars().gentle_reminders.borrow().clone();
+            reminders.map_or(true, |reminders| {
+                reminders.should_show_scheduled_update(&update_info_from_item(item), immediate_focus)
+            })
+        }
+
+        #[unsafe(method(standardUserDriverWillHandleShowingUpdate:forUpdate:state:))]
+        fn will_handle_showing_update(
+            &self,
+            handled_by_sparkle: bool,
+            item: &SPUAppcastItem,
+            state: &SPUUserUpdateState,
+        ) {
+            let reminders = self.ivars().gentle_reminders.borrow().clone();
+            if let Some(reminders) = reminders {
+                reminders.will_show_update(handled_by_sparkle, &update_info_from_item(item), UserUpdateState {
+                    stage: UserUpdateStage::from_raw(state.stage()),
+                    user_initiated: state.user_initiated(),
+                });
+            }
+        }
+
+        #[unsafe(method(standardUserDriverDidReceiveUserAttentionForUpdate:))]
+        fn did_receive_user_attention(&self, item: &SPUAppcastItem) {
+            let reminders = self.ivars().gentle_reminders.borrow().clone();
+            if let Some(reminders) = reminders {
+                reminders.did_receive_user_attention(&update_info_from_item(item));
+            }
+        }
+
+        #[unsafe(method(standardUserDriverWillFinishUpdateSession))]
+        fn will_finish_update_session(&self) {
+            let reminders = self.ivars().gentle_reminders.borrow().clone();
+            if let Some(reminders) = reminders {
+                reminders.will_finish_update_session();
+            }
         }
 
         #[unsafe(method(allowedChannelsForUpdater:))]
@@ -527,12 +575,21 @@ fn update_info_from_item(item: &SPUAppcastItem) -> UpdateInfo {
     }
 }
 
+// Release the borrow before invoking host code: a callback may replace itself.
+fn emit_to_callback(slot: &RefCell<Option<EventCallback>>, event: UpdateEvent) {
+    let callback = slot.borrow().clone();
+    if let Some(callback) = callback {
+        callback(event);
+    }
+}
+
 impl SparkleDelegate {
     pub fn new(mtm: MainThreadMarker) -> Retained<Self> {
         let this = Self::alloc(mtm);
         let this = this.set_ivars(DelegateIvars {
-            emitter: RefCell::new(None),
             event_callback: RefCell::new(None),
+            relaunch_handler: RefCell::new(None),
+            gentle_reminders: RefCell::new(None),
             allowed_channels: RefCell::new(None),
             feed_url_override: RefCell::new(None),
             feed_parameters: RefCell::new(None),
@@ -547,26 +604,20 @@ impl SparkleDelegate {
         unsafe { msg_send![super(this), init] }
     }
 
-    pub fn set_emitter(&self, emitter: EventEmitter) {
-        *self.ivars().emitter.borrow_mut() = Some(emitter);
-    }
-
     pub fn set_event_callback(&self, callback: Option<EventCallback>) {
         *self.ivars().event_callback.borrow_mut() = callback;
     }
 
-    fn emit<T: Serialize>(&self, event: &str, payload: &T) {
-        if let Some(ref emitter) = *self.ivars().emitter.borrow() {
-            match serde_json::to_value(payload) {
-                Ok(value) => {
-                    if let Some(ref callback) = *self.ivars().event_callback.borrow() {
-                        callback(event, &value);
-                    }
-                    emitter(event, value)
-                }
-                Err(e) => error!("Failed to serialize event payload: {}", e),
-            }
-        }
+    pub fn set_relaunch_handler(&self, handler: Option<RelaunchHandler>) {
+        *self.ivars().relaunch_handler.borrow_mut() = handler;
+    }
+
+    pub fn set_gentle_reminders(&self, reminders: Option<Rc<dyn GentleReminders>>) {
+        *self.ivars().gentle_reminders.borrow_mut() = reminders;
+    }
+
+    fn emit(&self, event: UpdateEvent) {
+        emit_to_callback(&self.ivars().event_callback, event);
     }
 
     pub fn allowed_channels(&self) -> Option<Vec<String>> {
@@ -650,6 +701,25 @@ impl SparkleDelegate {
 mod tests {
     use super::*;
     use objc2_foundation::{NSError, NSMutableDictionary};
+
+    #[test]
+    fn event_callbacks_can_replace_themselves_without_an_emitter() {
+        let slot = Rc::new(RefCell::new(None));
+        let weak_slot = Rc::downgrade(&slot);
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let captured = seen.clone();
+        let callback: EventCallback = Rc::new(move |event| {
+            captured.borrow_mut().push(event.name());
+            *weak_slot.upgrade().unwrap().borrow_mut() = None;
+        });
+        *slot.borrow_mut() = Some(callback);
+        emit_to_callback(&slot, UpdateEvent::UserDidCancelDownload);
+        emit_to_callback(&slot, UpdateEvent::WillNotScheduleUpdateCheck);
+        assert_eq!(
+            *seen.borrow(),
+            vec![crate::events::EVENT_USER_DID_CANCEL_DOWNLOAD]
+        );
+    }
 
     fn number(value: i64) -> Retained<NSNumber> {
         unsafe { msg_send![NSNumber::class(), numberWithLongLong: value] }

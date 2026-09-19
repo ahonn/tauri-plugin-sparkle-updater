@@ -44,6 +44,8 @@ Default permissions for the Sparkle updater plugin
 - `allow-set-should-proceed-with-update`
 - `allow-decryption-password`
 - `allow-set-decryption-password`
+- `allow-download-request-headers`
+- `allow-set-download-request-headers`
 - `allow-last-found-update`
 
 ## Permission Table
@@ -311,6 +313,32 @@ Enables the decryption_password command without any pre-configured scope.
 <td>
 
 Denies the decryption_password command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:allow-download-request-headers`
+
+</td>
+<td>
+
+Enables the download_request_headers command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-download-request-headers`
+
+</td>
+<td>
+
+Denies the download_request_headers command without any pre-configured scope.
 
 </td>
 </tr>
@@ -727,6 +755,32 @@ Enables the set_decryption_password command without any pre-configured scope.
 <td>
 
 Denies the set_decryption_password command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:allow-set-download-request-headers`
+
+</td>
+<td>
+
+Enables the set_download_request_headers command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-set-download-request-headers`
+
+</td>
+<td>
+
+Denies the set_download_request_headers command without any pre-configured scope.
 
 </td>
 </tr>

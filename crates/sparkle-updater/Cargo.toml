@@ -1,0 +1,33 @@
+[package]
+name = "sparkle-updater"
+version = "0.1.0"
+description = "Main-thread Rust bindings for the macOS Sparkle update framework"
+authors = ["ahonn <ahonn95@outlook.com>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+repository = "https://github.com/ahonn/tauri-plugin-sparkle-updater"
+readme = "README.md"
+links = "Sparkle"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+url = "2"
+log = "0.4"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSDate", "NSDictionary", "NSURL", "NSBundle", "NSError", "NSString"] }
+block2 = "0.6"
+
+[dev-dependencies]
+objc2-app-kit = { version = "0.3", features = ["NSApplication"] }
+static_assertions = "1"
+
+[package.metadata.docs.rs]
+default-target = "aarch64-apple-darwin"
+
+[[test]]
+name = "native_callbacks"
+path = "src/native_tests.rs"
+harness = false

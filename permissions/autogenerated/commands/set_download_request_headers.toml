@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-download-request-headers"
+description = "Enables the set_download_request_headers command without any pre-configured scope."
+commands.allow = ["set_download_request_headers"]
+
+[[permission]]
+identifier = "deny-set-download-request-headers"
+description = "Denies the set_download_request_headers command without any pre-configured scope."
+commands.deny = ["set_download_request_headers"]

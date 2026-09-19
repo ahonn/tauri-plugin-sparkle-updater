@@ -1,458 +1,283 @@
-use std::collections::HashMap;
-use std::ptr;
-use std::sync::Arc;
-
-use dispatch::Queue;
-use log::warn;
-use objc2::rc::Retained;
-use objc2::runtime::NSObject;
-use objc2::{msg_send, ClassType, MainThreadMarker};
-use objc2_foundation::{NSBundle, NSDictionary, NSError, NSString, NSURL};
-use tauri::{AppHandle, Emitter, Runtime};
-
-use super::bindings::{SPUStandardUpdaterController, SPUUpdater};
-use super::delegate::{EventCallback, SparkleDelegate};
 use crate::events::UpdateInfo;
 use crate::{Error, Result};
+use dispatch::Queue;
+use objc2::MainThreadMarker;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    marker::PhantomData,
+    rc::Rc,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, RwLock,
+    },
+};
+use tauri::{AppHandle, Emitter, Runtime};
 
-/// Pointer wrapper for cross-thread dispatch. Only dereference on main thread.
-#[repr(transparent)]
-struct SendPtr<T>(*const T);
+pub type EventCallback = Arc<dyn Fn(&str, &serde_json::Value) + Send + Sync>;
+type CallbackSlot = Arc<RwLock<Option<EventCallback>>>;
 
-unsafe impl<T> Send for SendPtr<T> {}
-unsafe impl<T> Sync for SendPtr<T> {}
+thread_local! {
+    static UPDATERS: RefCell<HashMap<u64, Rc<sparkle_updater::SparkleUpdater>>> = RefCell::new(HashMap::new());
+}
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-impl<T> Clone for SendPtr<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
+/// A thread-safe Tauri handle. Native objects live exclusively on the main thread.
+pub struct SparkleUpdater<R: Runtime> {
+    id: u64,
+    version: String,
+    callback: CallbackSlot,
+    runtime: PhantomData<fn() -> R>,
 }
 
-impl<T> Copy for SendPtr<T> {}
-
-impl<T> SendPtr<T> {
-    fn new(ptr: *const T) -> Self {
-        SendPtr(ptr)
-    }
-
-    unsafe fn as_ref(&self) -> &T {
-        &*self.0
-    }
-}
-
-fn is_valid_bundle() -> bool {
-    unsafe {
-        let bundle = NSBundle::mainBundle();
-        let identifier: Option<Retained<NSString>> = msg_send![&bundle, bundleIdentifier];
-        match identifier {
-            Some(id) => {
-                let id_str = id.to_string();
-                !id_str.is_empty() && id_str != "com.apple.dt.Xcode.tool"
-            }
-            None => false,
-        }
-    }
-}
-
-/// Returns `None` if running outside a valid macOS bundle (e.g., during `tauri dev`).
 pub fn init<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SparkleUpdater<R>>> {
     let mtm = MainThreadMarker::new()
-        .ok_or_else(|| Error::SparkleInit("Must be called on main thread".to_string()))?;
-
-    if !is_valid_bundle() {
-        warn!(
-            "Sparkle updater disabled: not running inside a valid macOS bundle. \
-             This is expected during development (tauri dev). \
-             Sparkle will work in release builds (tauri build)."
-        );
+        .ok_or_else(|| Error::SparkleInit("Must initialize on the main thread".into()))?;
+    let callback: CallbackSlot = Arc::new(RwLock::new(None));
+    let callback_slot = callback.clone();
+    let handle = app.clone();
+    let updater = sparkle_updater::init(
+        mtm,
+        Some(Rc::new(move |event| {
+            let name = event.name();
+            let payload = event.payload();
+            if let Err(error) = handle.emit(name, &payload) {
+                log::error!("Failed to emit {name}: {error}");
+            }
+            let callback = callback_slot.read().unwrap().clone();
+            if let Some(callback) = callback {
+                callback(name, &payload);
+            }
+        })),
+    )?;
+    let Some(updater) = updater else {
         return Ok(None);
-    }
-
-    check_info_plist_keys();
-
-    let delegate = SparkleDelegate::new(mtm);
-    let app_clone = app.clone();
-    delegate.set_emitter(Arc::new(move |event: &str, payload: serde_json::Value| {
-        if let Err(e) = app_clone.emit(event, payload) {
-            log::error!("Failed to emit event {}: {}", event, e);
-        }
-    }));
-
-    let controller = unsafe {
-        let alloc: objc2::rc::Allocated<SPUStandardUpdaterController> =
-            objc2::msg_send![SPUStandardUpdaterController::class(), alloc];
-        let delegate_obj: &NSObject = &delegate;
-        SPUStandardUpdaterController::init_with_starting_updater(
-            alloc,
-            false,
-            Some(delegate_obj),
-            None,
-        )
     };
-
-    let updater: Retained<SPUUpdater> = controller.updater();
-    let mut error: *mut NSError = ptr::null_mut();
-    let success = updater.start_updater(&mut error);
-
-    if !success {
-        if !error.is_null() {
-            let ns_error = unsafe { &*error };
-            let description: Retained<NSString> =
-                unsafe { objc2::msg_send![ns_error, localizedDescription] };
-            return Err(Error::SparkleInit(description.to_string()));
-        }
-        return Err(Error::SparkleInit("Failed to start updater".to_string()));
-    }
-
-    let controller_ptr = SendPtr::new(Retained::as_ptr(&controller));
-    let delegate_ptr = SendPtr::new(Retained::as_ptr(&delegate));
-
+    let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+    UPDATERS.with(|registry| registry.borrow_mut().insert(id, Rc::new(updater)));
     Ok(Some(SparkleUpdater {
-        app: app.clone(),
-        _controller: controller,
-        controller_ptr,
-        _delegate: delegate,
-        delegate_ptr,
+        id,
+        version: app.package_info().version.to_string(),
+        callback,
+        runtime: PhantomData,
     }))
 }
 
-const PLIST_KEY_VALIDATIONS: &[(&str, &str)] = &[
-    (
-        "SUPublicEDKey",
-        "Sparkle will not be able to verify update signatures.",
-    ),
-    (
-        "SUFeedURL",
-        "You must set a feed URL before checking for updates.",
-    ),
-];
-
-fn check_info_plist_keys() {
-    unsafe {
-        let bundle = NSBundle::mainBundle();
-        let info_dict: Option<Retained<NSDictionary>> = msg_send![&bundle, infoDictionary];
-
-        if let Some(dict) = info_dict {
-            for (key_name, warning) in PLIST_KEY_VALIDATIONS {
-                let key = NSString::from_str(key_name);
-                let value: Option<Retained<NSObject>> = msg_send![&dict, objectForKey: &*key];
-                if value.is_none() {
-                    warn!("{} not found in Info.plist. {}", key_name, warning);
-                }
-            }
-        }
-    }
-}
-
-pub struct SparkleUpdater<R: Runtime> {
-    #[allow(dead_code)]
-    app: AppHandle<R>,
-    _controller: Retained<SPUStandardUpdaterController>,
-    controller_ptr: SendPtr<SPUStandardUpdaterController>,
-    _delegate: Retained<SparkleDelegate>,
-    delegate_ptr: SendPtr<SparkleDelegate>,
-}
-
-// All operations dispatched to main thread via GCD
-unsafe impl<R: Runtime> Send for SparkleUpdater<R> {}
-unsafe impl<R: Runtime> Sync for SparkleUpdater<R> {}
-
 impl<R: Runtime> SparkleUpdater<R> {
-    fn dispatch<T, F>(&self, f: F) -> T
-    where
-        T: Send,
-        F: FnOnce(&SPUStandardUpdaterController) -> T + Send,
-    {
-        let ptr = self.controller_ptr;
+    fn dispatch<T: Send>(
+        &self,
+        f: impl FnOnce(&sparkle_updater::SparkleUpdater) -> Result<T> + Send,
+    ) -> Result<T> {
+        let id = self.id;
+        let action = move || {
+            // Release the registry borrow before callbacks can reenter this handle.
+            let updater = UPDATERS.with(|registry| registry.borrow().get(&id).cloned());
+            updater.as_deref().ok_or(Error::UpdaterNotReady).and_then(f)
+        };
         if MainThreadMarker::new().is_some() {
-            // Already on main thread — call directly to avoid dispatch_sync deadlock
-            let controller = unsafe { ptr.as_ref() };
-            f(controller)
+            action()
         } else {
-            Queue::main().exec_sync(move || {
-                let controller = unsafe { ptr.as_ref() };
-                f(controller)
-            })
+            Queue::main().exec_sync(action)
         }
-    }
-
-    fn dispatch_delegate<T, F>(&self, f: F) -> T
-    where
-        T: Send,
-        F: FnOnce(&SparkleDelegate) -> T + Send,
-    {
-        let ptr = self.delegate_ptr;
-        if MainThreadMarker::new().is_some() {
-            // Already on main thread — call directly to avoid dispatch_sync deadlock
-            let delegate = unsafe { ptr.as_ref() };
-            f(delegate)
-        } else {
-            Queue::main().exec_sync(move || {
-                let delegate = unsafe { ptr.as_ref() };
-                f(delegate)
-            })
-        }
-    }
-
-    pub fn check_for_updates(&self) -> Result<()> {
-        self.dispatch(|c| c.check_for_updates(None));
-        Ok(())
-    }
-
-    pub fn check_for_updates_in_background(&self) -> Result<()> {
-        self.dispatch(|c| c.updater().check_for_updates_in_background());
-        Ok(())
-    }
-
-    pub fn can_check_for_updates(&self) -> Result<bool> {
-        Ok(self.dispatch(|c| c.updater().can_check_for_updates()))
     }
 
     pub fn current_version(&self) -> Result<String> {
-        Ok(self.app.package_info().version.to_string())
+        Ok(self.version.clone())
+    }
+    pub fn set_event_callback(&self, callback: Option<EventCallback>) {
+        *self.callback.write().unwrap() = callback;
+    }
+
+    pub(crate) fn shutdown(&self) {
+        let id = self.id;
+        let remove = move || {
+            // During process teardown the thread-local registry may already be
+            // destroying its values (which can release Tauri's managed state).
+            let updater = UPDATERS.try_with(|registry| registry.borrow_mut().remove(&id));
+            drop(updater);
+        };
+        if MainThreadMarker::new().is_some() {
+            remove();
+        } else {
+            Queue::main().exec_async(remove);
+        }
+    }
+    pub fn check_for_updates(&self) -> Result<()> {
+        self.dispatch(move |updater| updater.check_for_updates())
+    }
+
+    pub fn check_for_updates_in_background(&self) -> Result<()> {
+        self.dispatch(move |updater| updater.check_for_updates_in_background())
+    }
+
+    pub fn can_check_for_updates(&self) -> Result<bool> {
+        self.dispatch(move |updater| updater.can_check_for_updates())
     }
 
     pub fn feed_url(&self) -> Result<Option<String>> {
-        Ok(self.dispatch(|c| {
-            c.updater().feed_url().and_then(|url| {
-                let abs: Option<Retained<NSString>> =
-                    unsafe { objc2::msg_send![&url, absoluteString] };
-                abs.map(|s| s.to_string())
-            })
-        }))
+        self.dispatch(move |updater| updater.feed_url())
     }
 
     pub fn set_feed_url(&self, url: &str) -> Result<()> {
-        url::Url::parse(url).map_err(|_| Error::InvalidFeedUrl(url.to_string()))?;
-        let url_string = url.to_string();
-
-        self.dispatch(move |c| {
-            let ns_string = NSString::from_str(&url_string);
-            let ns_url: Option<Retained<NSURL>> =
-                unsafe { objc2::msg_send![NSURL::class(), URLWithString: &*ns_string] };
-            if let Some(url) = ns_url {
-                c.updater().set_feed_url(Some(&url));
-            }
-        });
-        Ok(())
+        let url = url.to_owned();
+        self.dispatch(move |updater| updater.set_feed_url(&url))
     }
 
     pub fn automatically_checks_for_updates(&self) -> Result<bool> {
-        Ok(self.dispatch(|c| c.updater().automatically_checks_for_updates()))
+        self.dispatch(move |updater| updater.automatically_checks_for_updates())
     }
 
     pub fn set_automatically_checks_for_updates(&self, enabled: bool) -> Result<()> {
-        self.dispatch(|c| c.updater().set_automatically_checks_for_updates(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_automatically_checks_for_updates(enabled))
     }
 
     pub fn automatically_downloads_updates(&self) -> Result<bool> {
-        Ok(self.dispatch(|c| c.updater().automatically_downloads_updates()))
+        self.dispatch(move |updater| updater.automatically_downloads_updates())
     }
 
     pub fn set_automatically_downloads_updates(&self, enabled: bool) -> Result<()> {
-        self.dispatch(|c| c.updater().set_automatically_downloads_updates(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_automatically_downloads_updates(enabled))
     }
 
     pub fn last_update_check_date(&self) -> Result<Option<f64>> {
-        Ok(self.dispatch(|c| {
-            c.updater().last_update_check_date().map(|date| {
-                let seconds: f64 = unsafe { objc2::msg_send![&date, timeIntervalSince1970] };
-                seconds * 1000.0
-            })
-        }))
+        self.dispatch(move |updater| updater.last_update_check_date())
     }
 
     pub fn reset_update_cycle(&self) -> Result<()> {
-        self.dispatch(|c| c.updater().reset_update_cycle());
-        Ok(())
+        self.dispatch(move |updater| updater.reset_update_cycle())
     }
 
     pub fn update_check_interval(&self) -> Result<f64> {
-        Ok(self.dispatch(|c| c.updater().update_check_interval()))
+        self.dispatch(move |updater| updater.update_check_interval())
     }
 
     pub fn set_update_check_interval(&self, interval: f64) -> Result<()> {
-        self.dispatch(|c| c.updater().set_update_check_interval(interval));
-        Ok(())
+        self.dispatch(move |updater| updater.set_update_check_interval(interval))
     }
 
     pub fn check_for_update_information(&self) -> Result<()> {
-        self.dispatch(|c| c.updater().check_for_update_information());
-        Ok(())
+        self.dispatch(move |updater| updater.check_for_update_information())
     }
 
     pub fn session_in_progress(&self) -> Result<bool> {
-        Ok(self.dispatch(|c| c.updater().session_in_progress()))
+        self.dispatch(move |updater| updater.session_in_progress())
     }
 
     pub fn http_headers(&self) -> Result<Option<HashMap<String, String>>> {
-        Ok(self.dispatch(|c| {
-            c.updater().http_headers().map(|dict| {
-                let mut map = HashMap::new();
-                let count: usize = unsafe { objc2::msg_send![&dict, count] };
-                if count > 0 {
-                    let keys: Retained<objc2_foundation::NSArray<NSString>> =
-                        unsafe { objc2::msg_send![&dict, allKeys] };
-                    for i in 0..count {
-                        let key: &NSString = unsafe { objc2::msg_send![&keys, objectAtIndex: i] };
-                        let value: Option<Retained<NSString>> =
-                            unsafe { objc2::msg_send![&dict, objectForKey: key] };
-                        if let Some(v) = value {
-                            map.insert(key.to_string(), v.to_string());
-                        }
-                    }
-                }
-                map
-            })
-        }))
+        self.dispatch(move |updater| updater.http_headers())
     }
 
     pub fn set_http_headers(&self, headers: Option<HashMap<String, String>>) -> Result<()> {
-        self.dispatch(move |c| {
-            let ns_dict = headers.map(|h| {
-                let keys: Vec<Retained<NSString>> =
-                    h.keys().map(|k| NSString::from_str(k)).collect();
-                let values: Vec<Retained<NSString>> =
-                    h.values().map(|v| NSString::from_str(v)).collect();
-                let key_refs: Vec<&NSString> = keys.iter().map(|k| k.as_ref()).collect();
-                let value_refs: Vec<&NSString> = values.iter().map(|v| v.as_ref()).collect();
-                NSDictionary::from_slices(&key_refs, &value_refs)
-            });
-            c.updater().set_http_headers(ns_dict.as_deref());
-        });
-        Ok(())
+        self.dispatch(move |updater| updater.set_http_headers(headers))
     }
 
     pub fn user_agent_string(&self) -> Result<String> {
-        Ok(self.dispatch(|c| c.updater().user_agent_string().to_string()))
+        self.dispatch(move |updater| updater.user_agent_string())
     }
 
     pub fn set_user_agent_string(&self, user_agent: &str) -> Result<()> {
-        let ua = user_agent.to_string();
-        self.dispatch(move |c| {
-            let ns_string = NSString::from_str(&ua);
-            c.updater().set_user_agent_string(&ns_string);
-        });
-        Ok(())
+        let user_agent = user_agent.to_owned();
+        self.dispatch(move |updater| updater.set_user_agent_string(&user_agent))
     }
 
     pub fn sends_system_profile(&self) -> Result<bool> {
-        Ok(self.dispatch(|c| c.updater().sends_system_profile()))
+        self.dispatch(move |updater| updater.sends_system_profile())
     }
 
     pub fn set_sends_system_profile(&self, sends: bool) -> Result<()> {
-        self.dispatch(|c| c.updater().set_sends_system_profile(sends));
-        Ok(())
+        self.dispatch(move |updater| updater.set_sends_system_profile(sends))
     }
 
     pub fn clear_feed_url_from_user_defaults(&self) -> Result<Option<String>> {
-        Ok(self.dispatch(|c| {
-            c.updater()
-                .clear_feed_url_from_user_defaults()
-                .and_then(|url| {
-                    let abs: Option<Retained<NSString>> =
-                        unsafe { objc2::msg_send![&url, absoluteString] };
-                    abs.map(|s| s.to_string())
-                })
-        }))
+        self.dispatch(move |updater| updater.clear_feed_url_from_user_defaults())
     }
 
     pub fn reset_update_cycle_after_short_delay(&self) -> Result<()> {
-        self.dispatch(|c| c.updater().reset_update_cycle_after_short_delay());
-        Ok(())
+        self.dispatch(move |updater| updater.reset_update_cycle_after_short_delay())
     }
 
     pub fn allowed_channels(&self) -> Result<Option<Vec<String>>> {
-        Ok(self.dispatch_delegate(|d| d.allowed_channels()))
+        self.dispatch(move |updater| updater.allowed_channels())
     }
 
     pub fn set_allowed_channels(&self, channels: Option<Vec<String>>) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_allowed_channels(channels));
-        Ok(())
+        self.dispatch(move |updater| updater.set_allowed_channels(channels))
     }
 
     pub fn feed_url_override(&self) -> Result<Option<String>> {
-        Ok(self.dispatch_delegate(|d| d.feed_url_override()))
+        self.dispatch(move |updater| updater.feed_url_override())
     }
 
     pub fn set_feed_url_override(&self, url: Option<String>) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_feed_url_override(url));
-        Ok(())
+        self.dispatch(move |updater| updater.set_feed_url_override(url))
     }
 
     pub fn feed_parameters(&self) -> Result<Option<HashMap<String, String>>> {
-        Ok(self.dispatch_delegate(|d| d.feed_parameters()))
+        self.dispatch(move |updater| updater.feed_parameters())
     }
 
     pub fn set_feed_parameters(&self, params: Option<HashMap<String, String>>) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_feed_parameters(params));
-        Ok(())
+        self.dispatch(move |updater| updater.set_feed_parameters(params))
     }
 
     pub fn should_download_release_notes(&self) -> Result<bool> {
-        Ok(self.dispatch_delegate(|d| d.should_download_release_notes()))
+        self.dispatch(move |updater| updater.should_download_release_notes())
     }
 
     pub fn set_should_download_release_notes(&self, enabled: bool) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_should_download_release_notes(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_should_download_release_notes(enabled))
     }
 
     pub fn should_relaunch_application(&self) -> Result<bool> {
-        Ok(self.dispatch_delegate(|d| d.should_relaunch()))
+        self.dispatch(move |updater| updater.should_relaunch_application())
     }
 
     pub fn set_should_relaunch_application(&self, enabled: bool) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_should_relaunch(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_should_relaunch_application(enabled))
     }
 
     pub fn may_check_for_updates_config(&self) -> Result<bool> {
-        Ok(self.dispatch_delegate(|d| d.may_check_for_updates()))
+        self.dispatch(move |updater| updater.may_check_for_updates_config())
     }
 
     pub fn set_may_check_for_updates_config(&self, enabled: bool) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_may_check_for_updates(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_may_check_for_updates_config(enabled))
     }
 
     pub fn should_proceed_with_update(&self) -> Result<bool> {
-        Ok(self.dispatch_delegate(|d| d.should_proceed_with_update()))
+        self.dispatch(move |updater| updater.should_proceed_with_update())
     }
 
     pub fn set_should_proceed_with_update(&self, enabled: bool) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_should_proceed_with_update(enabled));
-        Ok(())
+        self.dispatch(move |updater| updater.set_should_proceed_with_update(enabled))
     }
 
     pub fn decryption_password(&self) -> Result<Option<String>> {
-        Ok(self.dispatch_delegate(|d| d.decryption_password()))
+        self.dispatch(move |updater| updater.decryption_password())
     }
 
     pub fn set_decryption_password(&self, password: Option<String>) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_decryption_password(password));
-        Ok(())
+        self.dispatch(move |updater| updater.set_decryption_password(password))
     }
 
     pub fn last_found_update(&self) -> Result<Option<UpdateInfo>> {
-        Ok(self.dispatch_delegate(|d| d.last_found_update()))
-    }
-
-    pub fn set_event_callback(&self, callback: Option<EventCallback>) {
-        self.dispatch_delegate(|d| d.set_event_callback(callback))
+        self.dispatch(move |updater| updater.last_found_update())
     }
 
     pub fn download_request_headers(&self) -> Result<Option<HashMap<String, String>>> {
-        Ok(self.dispatch_delegate(|d| d.download_request_headers()))
+        self.dispatch(move |updater| updater.download_request_headers())
     }
 
     pub fn set_download_request_headers(
         &self,
         headers: Option<HashMap<String, String>>,
     ) -> Result<()> {
-        self.dispatch_delegate(|d| d.set_download_request_headers(headers));
-        Ok(())
+        self.dispatch(move |updater| updater.set_download_request_headers(headers))
+    }
+}
+
+impl<R: Runtime> Drop for SparkleUpdater<R> {
+    fn drop(&mut self) {
+        self.shutdown();
     }
 }

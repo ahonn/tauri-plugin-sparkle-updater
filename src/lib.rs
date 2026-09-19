@@ -5,12 +5,12 @@ use tauri::{
 
 mod commands;
 mod error;
-mod events;
+pub mod events;
 mod sparkle;
 
 pub use error::{Error, Result};
 
-use sparkle::SparkleUpdater;
+pub use sparkle::{EventCallback, SparkleUpdater};
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the sparkle-updater APIs.
 pub trait SparkleUpdaterExt<R: Runtime> {
@@ -31,7 +31,7 @@ impl<R: Runtime, T: Manager<R>> crate::SparkleUpdaterExt<R> for T {
 /// Sparkle configuration is read from the app's Info.plist:
 /// - `SUFeedURL` - Appcast feed URL
 /// - `SUPublicEDKey` - Ed25519 public key for signature verification
-/// - `SUEnableAutomaticChecks` - Enable automatic update checks (default: true)
+/// - `SUEnableAutomaticChecks` - Enable automatic update checks (prompts for permission when unspecified)
 /// - `SUAutomaticallyUpdate` - Automatically download and install updates (default: false)
 /// - `SUScheduledCheckInterval` - Check interval in seconds (default: 86400)
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
@@ -86,6 +86,18 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
                 app.manage(sparkle_updater);
             }
             Ok(())
+        })
+        .on_event(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                if let Some(updater) = app.sparkle_updater() {
+                    updater.shutdown();
+                }
+            }
+        })
+        .on_drop(|app| {
+            if let Some(updater) = app.sparkle_updater() {
+                updater.shutdown();
+            }
         })
         .build()
 }
