@@ -149,6 +149,36 @@ fn main() {
         };
         assert!(!postponed);
         assert_eq!(calls.get(), 1);
-        println!("native selectors: state object, gentle reminders, deferred and synchronous relaunch passed");
+
+        let staged = Rc::new(RefCell::new(Vec::new()));
+        let captured = staged.clone();
+        delegate.set_event_callback(Some(Rc::new(move |event| {
+            if let UpdateEvent::WillInstallUpdateOnQuit(info) = event {
+                captured.borrow_mut().push(info.version);
+            }
+        })));
+        let installs = Rc::new(Cell::new(0));
+        let captured = installs.clone();
+        let block = RcBlock::new(move || captured.set(captured.get() + 1));
+        let handled: bool = unsafe {
+            msg_send![&*delegate, updater: &*updater, willInstallUpdateOnQuit: &*item, immediateInstallationBlock: &*block]
+        };
+        assert!(!handled, "Sparkle keeps control by default");
+        assert!(delegate.pending_install().is_none());
+        assert!(!delegate.install_pending_update());
+
+        delegate.set_handles_install_on_quit(true);
+        let handled: bool = unsafe {
+            msg_send![&*delegate, updater: &*updater, willInstallUpdateOnQuit: &*item, immediateInstallationBlock: &*block]
+        };
+        drop(block);
+        assert!(handled);
+        assert_eq!(delegate.pending_install().unwrap().version, "2.0");
+        assert_eq!(installs.get(), 0, "staging must not install");
+        assert!(delegate.install_pending_update());
+        assert!(delegate.install_pending_update());
+        assert_eq!(installs.get(), 2, "the copied block stays callable");
+        assert_eq!(*staged.borrow(), vec!["2.0", "2.0"]);
+        println!("native selectors: state object, gentle reminders, deferred and synchronous relaunch, host install on quit passed");
     });
 }

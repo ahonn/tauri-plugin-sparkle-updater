@@ -1,8 +1,8 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use block2::Block;
+use block2::{Block, RcBlock};
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObject};
 use objc2::{define_class, msg_send, ClassType, DeclaredClass, MainThreadMarker, MainThreadOnly};
@@ -35,6 +35,14 @@ pub struct DelegateIvars {
     decryption_password: RefCell<Option<String>>,
     last_found_update: RefCell<Option<UpdateInfo>>,
     download_request_headers: RefCell<Option<HashMap<String, String>>>,
+    handles_install_on_quit: Cell<bool>,
+    pending_install: RefCell<Option<PendingInstall>>,
+}
+
+/// An update Sparkle staged for install on quit after the host took control of it.
+struct PendingInstall {
+    update: UpdateInfo,
+    install: RcBlock<dyn Fn()>,
 }
 
 define_class!(
@@ -219,23 +227,36 @@ define_class!(
         }
 
         /// Sparkle asks whether the host takes over an update it downloaded
-        /// automatically and staged for install on quit. Returning `YES`
-        /// hands Sparkle's follow-ups to the host: the reminder it shows when
-        /// the app has not quit for `SUScheduledImpatientCheckInterval`, and
-        /// the immediate presentation of critical updates. This notification
-        /// remains informational; custom presentation uses the standard user
-        /// driver's Gentle Reminders callbacks instead.
+        /// automatically and staged for install on quit.
+        ///
+        /// Returning `NO` lets Sparkle's update cycle continue. The staged update
+        /// then stays resumable: when the app has not quit for
+        /// `SUScheduledImpatientCheckInterval`, Sparkle presents that staged
+        /// update without loading the appcast again, even if a newer release
+        /// has shipped since.
+        ///
+        /// Returning `YES` stops the update cycle until the app terminates and
+        /// makes the host responsible for calling `immediate_install`, which
+        /// installs and relaunches without UI. Sparkle installs the update on
+        /// termination in both cases.
         #[unsafe(method(updater:willInstallUpdateOnQuit:immediateInstallationBlock:))]
         fn updater_will_install_update_on_quit(
             &self,
             _updater: &NSObject,
             item: &SPUAppcastItem,
-            _handler: &Block<dyn Fn()>,
+            immediate_install: &Block<dyn Fn()>,
         ) -> bool {
+            let handled = self.ivars().handles_install_on_quit.get();
+            if handled {
+                *self.ivars().pending_install.borrow_mut() = Some(PendingInstall {
+                    update: update_info_from_item(item),
+                    install: immediate_install.copy(),
+                });
+            }
             self.emit(UpdateEvent::WillInstallUpdateOnQuit(VersionInfo {
                 version: item.display_version_string().to_string(),
             }));
-            false
+            handled
         }
 
         #[unsafe(method(updater:shouldPostponeRelaunchForUpdate:untilInvokingBlock:))]
@@ -600,6 +621,8 @@ impl SparkleDelegate {
             decryption_password: RefCell::new(None),
             last_found_update: RefCell::new(None),
             download_request_headers: RefCell::new(None),
+            handles_install_on_quit: Cell::new(false),
+            pending_install: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -694,6 +717,43 @@ impl SparkleDelegate {
 
     pub fn set_download_request_headers(&self, headers: Option<HashMap<String, String>>) {
         *self.ivars().download_request_headers.borrow_mut() = headers;
+    }
+
+    pub fn handles_install_on_quit(&self) -> bool {
+        self.ivars().handles_install_on_quit.get()
+    }
+
+    pub fn set_handles_install_on_quit(&self, enabled: bool) {
+        self.ivars().handles_install_on_quit.set(enabled);
+    }
+
+    pub fn pending_install(&self) -> Option<UpdateInfo> {
+        self.ivars()
+            .pending_install
+            .borrow()
+            .as_ref()
+            .map(|pending| pending.update.clone())
+    }
+
+    /// Asks Sparkle to install the staged update now and relaunch.
+    ///
+    /// The pending update is kept: Sparkle 2.3 and later accept the block again
+    /// when the application cancels the termination it requested.
+    pub fn install_pending_update(&self) -> bool {
+        // Release the borrow before calling into Sparkle.
+        let install = self
+            .ivars()
+            .pending_install
+            .borrow()
+            .as_ref()
+            .map(|pending| pending.install.clone());
+        match install {
+            Some(install) => {
+                install.call(());
+                true
+            }
+            None => false,
+        }
     }
 }
 

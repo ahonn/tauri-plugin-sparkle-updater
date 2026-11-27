@@ -183,10 +183,10 @@
           "markdownDescription": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`"
         },
         {
-          "description": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-version`\n- `allow-name`\n- `allow-tauri-version`\n- `allow-identifier`\n- `allow-bundle-type`\n- `allow-register-listener`\n- `allow-remove-listener`",
+          "description": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-version`\n- `allow-name`\n- `allow-tauri-version`\n- `allow-identifier`\n- `allow-bundle-type`\n- `allow-register-listener`\n- `allow-remove-listener`\n- `allow-supports-multiple-windows`",
           "type": "string",
           "const": "core:app:default",
-          "markdownDescription": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-version`\n- `allow-name`\n- `allow-tauri-version`\n- `allow-identifier`\n- `allow-bundle-type`\n- `allow-register-listener`\n- `allow-remove-listener`"
+          "markdownDescription": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-version`\n- `allow-name`\n- `allow-tauri-version`\n- `allow-identifier`\n- `allow-bundle-type`\n- `allow-register-listener`\n- `allow-remove-listener`\n- `allow-supports-multiple-windows`"
         },
         {
           "description": "Enables the app_hide command without any pre-configured scope.",
@@ -259,6 +259,12 @@
           "type": "string",
           "const": "core:app:allow-set-dock-visibility",
           "markdownDescription": "Enables the set_dock_visibility command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the supports_multiple_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:app:allow-supports-multiple-windows",
+          "markdownDescription": "Enables the supports_multiple_windows command without any pre-configured scope."
         },
         {
           "description": "Enables the tauri_version command without any pre-configured scope.",
@@ -343,6 +349,12 @@
           "type": "string",
           "const": "core:app:deny-set-dock-visibility",
           "markdownDescription": "Denies the set_dock_visibility command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the supports_multiple_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:app:deny-supports-multiple-windows",
+          "markdownDescription": "Denies the supports_multiple_windows command without any pre-configured scope."
         },
         {
           "description": "Denies the tauri_version command without any pre-configured scope.",
@@ -867,10 +879,10 @@
           "markdownDescription": "Denies the close command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin, which enables all commands.\n#### This default permission set includes:\n\n- `allow-new`\n- `allow-get-by-id`\n- `allow-remove-by-id`\n- `allow-set-icon`\n- `allow-set-menu`\n- `allow-set-tooltip`\n- `allow-set-title`\n- `allow-set-visible`\n- `allow-set-temp-dir-path`\n- `allow-set-icon-as-template`\n- `allow-set-show-menu-on-left-click`",
+          "description": "Default permissions for the plugin, which enables all commands.\n#### This default permission set includes:\n\n- `allow-new`\n- `allow-get-by-id`\n- `allow-remove-by-id`\n- `allow-set-icon`\n- `allow-set-menu`\n- `allow-set-tooltip`\n- `allow-set-title`\n- `allow-set-visible`\n- `allow-set-temp-dir-path`\n- `allow-set-icon-as-template`\n- `allow-set-icon-with-as-template`\n- `allow-set-show-menu-on-left-click`",
           "type": "string",
           "const": "core:tray:default",
-          "markdownDescription": "Default permissions for the plugin, which enables all commands.\n#### This default permission set includes:\n\n- `allow-new`\n- `allow-get-by-id`\n- `allow-remove-by-id`\n- `allow-set-icon`\n- `allow-set-menu`\n- `allow-set-tooltip`\n- `allow-set-title`\n- `allow-set-visible`\n- `allow-set-temp-dir-path`\n- `allow-set-icon-as-template`\n- `allow-set-show-menu-on-left-click`"
+          "markdownDescription": "Default permissions for the plugin, which enables all commands.\n#### This default permission set includes:\n\n- `allow-new`\n- `allow-get-by-id`\n- `allow-remove-by-id`\n- `allow-set-icon`\n- `allow-set-menu`\n- `allow-set-tooltip`\n- `allow-set-title`\n- `allow-set-visible`\n- `allow-set-temp-dir-path`\n- `allow-set-icon-as-template`\n- `allow-set-icon-with-as-template`\n- `allow-set-show-menu-on-left-click`"
         },
         {
           "description": "Enables the get_by_id command without any pre-configured scope.",
@@ -901,6 +913,12 @@
           "type": "string",
           "const": "core:tray:allow-set-icon-as-template",
           "markdownDescription": "Enables the set_icon_as_template command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_icon_with_as_template command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:tray:allow-set-icon-with-as-template",
+          "markdownDescription": "Enables the set_icon_with_as_template command without any pre-configured scope."
         },
         {
           "description": "Enables the set_menu command without any pre-configured scope.",
@@ -967,6 +985,12 @@
           "type": "string",
           "const": "core:tray:deny-set-icon-as-template",
           "markdownDescription": "Denies the set_icon_as_template command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_icon_with_as_template command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:tray:deny-set-icon-with-as-template",
+          "markdownDescription": "Denies the set_icon_with_as_template command without any pre-configured scope."
         },
         {
           "description": "Denies the set_menu command without any pre-configured scope.",
@@ -1227,10 +1251,16 @@
           "markdownDescription": "Denies the webview_size command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-get-all-windows`\n- `allow-scale-factor`\n- `allow-inner-position`\n- `allow-outer-position`\n- `allow-inner-size`\n- `allow-outer-size`\n- `allow-is-fullscreen`\n- `allow-is-minimized`\n- `allow-is-maximized`\n- `allow-is-focused`\n- `allow-is-decorated`\n- `allow-is-resizable`\n- `allow-is-maximizable`\n- `allow-is-minimizable`\n- `allow-is-closable`\n- `allow-is-visible`\n- `allow-is-enabled`\n- `allow-title`\n- `allow-current-monitor`\n- `allow-primary-monitor`\n- `allow-monitor-from-point`\n- `allow-available-monitors`\n- `allow-cursor-position`\n- `allow-theme`\n- `allow-is-always-on-top`\n- `allow-internal-toggle-maximize`",
+          "description": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-get-all-windows`\n- `allow-scale-factor`\n- `allow-inner-position`\n- `allow-outer-position`\n- `allow-inner-size`\n- `allow-outer-size`\n- `allow-is-fullscreen`\n- `allow-is-minimized`\n- `allow-is-maximized`\n- `allow-is-focused`\n- `allow-is-decorated`\n- `allow-is-resizable`\n- `allow-is-maximizable`\n- `allow-is-minimizable`\n- `allow-is-closable`\n- `allow-is-visible`\n- `allow-is-enabled`\n- `allow-title`\n- `allow-current-monitor`\n- `allow-primary-monitor`\n- `allow-monitor-from-point`\n- `allow-available-monitors`\n- `allow-cursor-position`\n- `allow-theme`\n- `allow-is-always-on-top`\n- `allow-activity-name`\n- `allow-scene-identifier`\n- `allow-internal-toggle-maximize`",
           "type": "string",
           "const": "core:window:default",
-          "markdownDescription": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-get-all-windows`\n- `allow-scale-factor`\n- `allow-inner-position`\n- `allow-outer-position`\n- `allow-inner-size`\n- `allow-outer-size`\n- `allow-is-fullscreen`\n- `allow-is-minimized`\n- `allow-is-maximized`\n- `allow-is-focused`\n- `allow-is-decorated`\n- `allow-is-resizable`\n- `allow-is-maximizable`\n- `allow-is-minimizable`\n- `allow-is-closable`\n- `allow-is-visible`\n- `allow-is-enabled`\n- `allow-title`\n- `allow-current-monitor`\n- `allow-primary-monitor`\n- `allow-monitor-from-point`\n- `allow-available-monitors`\n- `allow-cursor-position`\n- `allow-theme`\n- `allow-is-always-on-top`\n- `allow-internal-toggle-maximize`"
+          "markdownDescription": "Default permissions for the plugin.\n#### This default permission set includes:\n\n- `allow-get-all-windows`\n- `allow-scale-factor`\n- `allow-inner-position`\n- `allow-outer-position`\n- `allow-inner-size`\n- `allow-outer-size`\n- `allow-is-fullscreen`\n- `allow-is-minimized`\n- `allow-is-maximized`\n- `allow-is-focused`\n- `allow-is-decorated`\n- `allow-is-resizable`\n- `allow-is-maximizable`\n- `allow-is-minimizable`\n- `allow-is-closable`\n- `allow-is-visible`\n- `allow-is-enabled`\n- `allow-title`\n- `allow-current-monitor`\n- `allow-primary-monitor`\n- `allow-monitor-from-point`\n- `allow-available-monitors`\n- `allow-cursor-position`\n- `allow-theme`\n- `allow-is-always-on-top`\n- `allow-activity-name`\n- `allow-scene-identifier`\n- `allow-internal-toggle-maximize`"
+        },
+        {
+          "description": "Enables the activity_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:window:allow-activity-name",
+          "markdownDescription": "Enables the activity_name command without any pre-configured scope."
         },
         {
           "description": "Enables the available_monitors command without any pre-configured scope.",
@@ -1423,6 +1453,12 @@
           "type": "string",
           "const": "core:window:allow-scale-factor",
           "markdownDescription": "Enables the scale_factor command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the scene_identifier command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:window:allow-scene-identifier",
+          "markdownDescription": "Enables the scene_identifier command without any pre-configured scope."
         },
         {
           "description": "Enables the set_always_on_bottom command without any pre-configured scope.",
@@ -1689,6 +1725,12 @@
           "markdownDescription": "Enables the unminimize command without any pre-configured scope."
         },
         {
+          "description": "Denies the activity_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:window:deny-activity-name",
+          "markdownDescription": "Denies the activity_name command without any pre-configured scope."
+        },
+        {
           "description": "Denies the available_monitors command without any pre-configured scope.",
           "type": "string",
           "const": "core:window:deny-available-monitors",
@@ -1879,6 +1921,12 @@
           "type": "string",
           "const": "core:window:deny-scale-factor",
           "markdownDescription": "Denies the scale_factor command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the scene_identifier command without any pre-configured scope.",
+          "type": "string",
+          "const": "core:window:deny-scene-identifier",
+          "markdownDescription": "Denies the scene_identifier command without any pre-configured scope."
         },
         {
           "description": "Denies the set_always_on_bottom command without any pre-configured scope.",
@@ -2145,10 +2193,10 @@
           "markdownDescription": "Denies the unminimize command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the Sparkle updater plugin\n#### This default permission set includes:\n\n- `allow-check-for-updates`\n- `allow-check-for-updates-in-background`\n- `allow-can-check-for-updates`\n- `allow-current-version`\n- `allow-feed-url`\n- `allow-set-feed-url`\n- `allow-automatically-checks-for-updates`\n- `allow-set-automatically-checks-for-updates`\n- `allow-automatically-downloads-updates`\n- `allow-set-automatically-downloads-updates`\n- `allow-last-update-check-date`\n- `allow-reset-update-cycle`\n- `allow-update-check-interval`\n- `allow-set-update-check-interval`\n- `allow-check-for-update-information`\n- `allow-session-in-progress`\n- `allow-http-headers`\n- `allow-set-http-headers`\n- `allow-user-agent-string`\n- `allow-set-user-agent-string`\n- `allow-sends-system-profile`\n- `allow-set-sends-system-profile`\n- `allow-clear-feed-url-from-user-defaults`\n- `allow-reset-update-cycle-after-short-delay`\n- `allow-allowed-channels`\n- `allow-set-allowed-channels`\n- `allow-feed-url-override`\n- `allow-set-feed-url-override`\n- `allow-feed-parameters`\n- `allow-set-feed-parameters`\n- `allow-should-download-release-notes`\n- `allow-set-should-download-release-notes`\n- `allow-should-relaunch-application`\n- `allow-set-should-relaunch-application`\n- `allow-may-check-for-updates-config`\n- `allow-set-may-check-for-updates-config`\n- `allow-should-proceed-with-update`\n- `allow-set-should-proceed-with-update`\n- `allow-decryption-password`\n- `allow-set-decryption-password`\n- `allow-download-request-headers`\n- `allow-set-download-request-headers`\n- `allow-last-found-update`",
+          "description": "Default permissions for the Sparkle updater plugin\n#### This default permission set includes:\n\n- `allow-check-for-updates`\n- `allow-check-for-updates-in-background`\n- `allow-can-check-for-updates`\n- `allow-current-version`\n- `allow-feed-url`\n- `allow-set-feed-url`\n- `allow-automatically-checks-for-updates`\n- `allow-set-automatically-checks-for-updates`\n- `allow-automatically-downloads-updates`\n- `allow-set-automatically-downloads-updates`\n- `allow-last-update-check-date`\n- `allow-reset-update-cycle`\n- `allow-update-check-interval`\n- `allow-set-update-check-interval`\n- `allow-check-for-update-information`\n- `allow-session-in-progress`\n- `allow-http-headers`\n- `allow-set-http-headers`\n- `allow-user-agent-string`\n- `allow-set-user-agent-string`\n- `allow-sends-system-profile`\n- `allow-set-sends-system-profile`\n- `allow-clear-feed-url-from-user-defaults`\n- `allow-reset-update-cycle-after-short-delay`\n- `allow-allowed-channels`\n- `allow-set-allowed-channels`\n- `allow-feed-url-override`\n- `allow-set-feed-url-override`\n- `allow-feed-parameters`\n- `allow-set-feed-parameters`\n- `allow-should-download-release-notes`\n- `allow-set-should-download-release-notes`\n- `allow-should-relaunch-application`\n- `allow-set-should-relaunch-application`\n- `allow-may-check-for-updates-config`\n- `allow-set-may-check-for-updates-config`\n- `allow-should-proceed-with-update`\n- `allow-set-should-proceed-with-update`\n- `allow-decryption-password`\n- `allow-set-decryption-password`\n- `allow-download-request-headers`\n- `allow-set-download-request-headers`\n- `allow-last-found-update`\n- `allow-handles-install-on-quit`\n- `allow-set-handles-install-on-quit`\n- `allow-pending-install-on-quit`\n- `allow-install-pending-update`",
           "type": "string",
           "const": "sparkle-updater:default",
-          "markdownDescription": "Default permissions for the Sparkle updater plugin\n#### This default permission set includes:\n\n- `allow-check-for-updates`\n- `allow-check-for-updates-in-background`\n- `allow-can-check-for-updates`\n- `allow-current-version`\n- `allow-feed-url`\n- `allow-set-feed-url`\n- `allow-automatically-checks-for-updates`\n- `allow-set-automatically-checks-for-updates`\n- `allow-automatically-downloads-updates`\n- `allow-set-automatically-downloads-updates`\n- `allow-last-update-check-date`\n- `allow-reset-update-cycle`\n- `allow-update-check-interval`\n- `allow-set-update-check-interval`\n- `allow-check-for-update-information`\n- `allow-session-in-progress`\n- `allow-http-headers`\n- `allow-set-http-headers`\n- `allow-user-agent-string`\n- `allow-set-user-agent-string`\n- `allow-sends-system-profile`\n- `allow-set-sends-system-profile`\n- `allow-clear-feed-url-from-user-defaults`\n- `allow-reset-update-cycle-after-short-delay`\n- `allow-allowed-channels`\n- `allow-set-allowed-channels`\n- `allow-feed-url-override`\n- `allow-set-feed-url-override`\n- `allow-feed-parameters`\n- `allow-set-feed-parameters`\n- `allow-should-download-release-notes`\n- `allow-set-should-download-release-notes`\n- `allow-should-relaunch-application`\n- `allow-set-should-relaunch-application`\n- `allow-may-check-for-updates-config`\n- `allow-set-may-check-for-updates-config`\n- `allow-should-proceed-with-update`\n- `allow-set-should-proceed-with-update`\n- `allow-decryption-password`\n- `allow-set-decryption-password`\n- `allow-download-request-headers`\n- `allow-set-download-request-headers`\n- `allow-last-found-update`"
+          "markdownDescription": "Default permissions for the Sparkle updater plugin\n#### This default permission set includes:\n\n- `allow-check-for-updates`\n- `allow-check-for-updates-in-background`\n- `allow-can-check-for-updates`\n- `allow-current-version`\n- `allow-feed-url`\n- `allow-set-feed-url`\n- `allow-automatically-checks-for-updates`\n- `allow-set-automatically-checks-for-updates`\n- `allow-automatically-downloads-updates`\n- `allow-set-automatically-downloads-updates`\n- `allow-last-update-check-date`\n- `allow-reset-update-cycle`\n- `allow-update-check-interval`\n- `allow-set-update-check-interval`\n- `allow-check-for-update-information`\n- `allow-session-in-progress`\n- `allow-http-headers`\n- `allow-set-http-headers`\n- `allow-user-agent-string`\n- `allow-set-user-agent-string`\n- `allow-sends-system-profile`\n- `allow-set-sends-system-profile`\n- `allow-clear-feed-url-from-user-defaults`\n- `allow-reset-update-cycle-after-short-delay`\n- `allow-allowed-channels`\n- `allow-set-allowed-channels`\n- `allow-feed-url-override`\n- `allow-set-feed-url-override`\n- `allow-feed-parameters`\n- `allow-set-feed-parameters`\n- `allow-should-download-release-notes`\n- `allow-set-should-download-release-notes`\n- `allow-should-relaunch-application`\n- `allow-set-should-relaunch-application`\n- `allow-may-check-for-updates-config`\n- `allow-set-may-check-for-updates-config`\n- `allow-should-proceed-with-update`\n- `allow-set-should-proceed-with-update`\n- `allow-decryption-password`\n- `allow-set-decryption-password`\n- `allow-download-request-headers`\n- `allow-set-download-request-headers`\n- `allow-last-found-update`\n- `allow-handles-install-on-quit`\n- `allow-set-handles-install-on-quit`\n- `allow-pending-install-on-quit`\n- `allow-install-pending-update`"
         },
         {
           "description": "Enables the allowed_channels command without any pre-configured scope.",
@@ -2235,10 +2283,22 @@
           "markdownDescription": "Enables the feed_url_override command without any pre-configured scope."
         },
         {
+          "description": "Enables the handles_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:allow-handles-install-on-quit",
+          "markdownDescription": "Enables the handles_install_on_quit command without any pre-configured scope."
+        },
+        {
           "description": "Enables the http_headers command without any pre-configured scope.",
           "type": "string",
           "const": "sparkle-updater:allow-http-headers",
           "markdownDescription": "Enables the http_headers command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the install_pending_update command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:allow-install-pending-update",
+          "markdownDescription": "Enables the install_pending_update command without any pre-configured scope."
         },
         {
           "description": "Enables the last_found_update command without any pre-configured scope.",
@@ -2257,6 +2317,12 @@
           "type": "string",
           "const": "sparkle-updater:allow-may-check-for-updates-config",
           "markdownDescription": "Enables the may_check_for_updates_config command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pending_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:allow-pending-install-on-quit",
+          "markdownDescription": "Enables the pending_install_on_quit command without any pre-configured scope."
         },
         {
           "description": "Enables the ping command without any pre-configured scope.",
@@ -2335,6 +2401,12 @@
           "type": "string",
           "const": "sparkle-updater:allow-set-feed-url-override",
           "markdownDescription": "Enables the set_feed_url_override command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_handles_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:allow-set-handles-install-on-quit",
+          "markdownDescription": "Enables the set_handles_install_on_quit command without any pre-configured scope."
         },
         {
           "description": "Enables the set_http_headers command without any pre-configured scope.",
@@ -2499,10 +2571,22 @@
           "markdownDescription": "Denies the feed_url_override command without any pre-configured scope."
         },
         {
+          "description": "Denies the handles_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:deny-handles-install-on-quit",
+          "markdownDescription": "Denies the handles_install_on_quit command without any pre-configured scope."
+        },
+        {
           "description": "Denies the http_headers command without any pre-configured scope.",
           "type": "string",
           "const": "sparkle-updater:deny-http-headers",
           "markdownDescription": "Denies the http_headers command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the install_pending_update command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:deny-install-pending-update",
+          "markdownDescription": "Denies the install_pending_update command without any pre-configured scope."
         },
         {
           "description": "Denies the last_found_update command without any pre-configured scope.",
@@ -2521,6 +2605,12 @@
           "type": "string",
           "const": "sparkle-updater:deny-may-check-for-updates-config",
           "markdownDescription": "Denies the may_check_for_updates_config command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pending_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:deny-pending-install-on-quit",
+          "markdownDescription": "Denies the pending_install_on_quit command without any pre-configured scope."
         },
         {
           "description": "Denies the ping command without any pre-configured scope.",
@@ -2599,6 +2689,12 @@
           "type": "string",
           "const": "sparkle-updater:deny-set-feed-url-override",
           "markdownDescription": "Denies the set_feed_url_override command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_handles_install_on_quit command without any pre-configured scope.",
+          "type": "string",
+          "const": "sparkle-updater:deny-set-handles-install-on-quit",
+          "markdownDescription": "Denies the set_handles_install_on_quit command without any pre-configured scope."
         },
         {
           "description": "Denies the set_http_headers command without any pre-configured scope.",

@@ -1,6 +1,6 @@
 # sparkle-updater
 
-A macOS-only Rust API for Sparkle 2.9.6. It has no Tauri, GPUI, Tokio, or other application-runtime dependency. The repository's root Tauri plugin is an adapter over this crate.
+A macOS-only Rust API for Sparkle 2.10.1. It has no Tauri, GPUI, Tokio, or other application-runtime dependency. The repository's root Tauri plugin is an adapter over this crate.
 
 ## Build and bundle
 
@@ -46,5 +46,18 @@ Events are typed `UpdateEvent` values. Event callbacks are informational; they d
 This hook is not a universal termination veto: Sparkle may install after an ordinary application quit without invoking it. Integrate saving with the host's regular quit lifecycle too. `set_should_relaunch_application(false)` controls relaunch; it does not cancel termination.
 
 `UpdaterConfig::gentle_reminders` accepts an `Rc<dyn GentleReminders>`. Configure it before startup. Returning `true` from `should_show_scheduled_update` keeps Sparkle's native reminder UI. Returning `false` transfers reminder presentation to the host; implement the trait's lifecycle notifications, present an accessible update affordance, and call `check_for_updates()` when the user activates it.
+
+## Install-on-quit decisions
+
+Sparkle installs an automatically downloaded update when the app quits. An app that seldom quits, such as a menu bar app, keeps that staged update for a long time. By default Sparkle keeps its update cycle running. After `SUScheduledImpatientCheckInterval` (one week) it presents the staged update. It does not load the appcast again for that, so the user can install an old release after a newer one has shipped.
+
+To control the staged update, set `UpdaterConfig::handles_install_on_quit` to `true`, or call `set_handles_install_on_quit(true)` before Sparkle stages an update. When Sparkle stages an update:
+
+1. Sparkle sends `UpdateEvent::WillInstallUpdateOnQuit`.
+2. `pending_install_on_quit()` returns the staged update.
+3. Sparkle stops its update cycle until the app terminates. During this time `check_for_updates()` and `check_for_updates_in_background()` do nothing.
+4. Call `install_pending_update()` when the host can relaunch, for example when it is idle or when the user selects a "Restart to update" item. Sparkle installs the update and relaunches the app without UI.
+
+If the host never calls `install_pending_update()`, Sparkle still installs the update when the app quits.
 
 The low-level Objective-C bindings remain private. The public API intentionally wraps the subset needed by the Rust and Tauri integrations rather than mirroring every Sparkle symbol.

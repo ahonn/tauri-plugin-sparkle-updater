@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-handles-install-on-quit"
+description = "Enables the handles_install_on_quit command without any pre-configured scope."
+commands.allow = ["handles_install_on_quit"]
+
+[[permission]]
+identifier = "deny-handles-install-on-quit"
+description = "Denies the handles_install_on_quit command without any pre-configured scope."
+commands.deny = ["handles_install_on_quit"]

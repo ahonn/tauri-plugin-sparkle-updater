@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-VERSION="2.9.6"
-EXPECTED_SHA256="52bf9e88cdd972fc0c81501377a880e90d47031bd8ca5462488f843e2609e192"
+VERSION="2.10.1"
+EXPECTED_SHA256="1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27"
 
 # Local usage: bash scripts/download-sparkle.sh [destination-directory]
 # The default is this repository's root, regardless of the current directory.
