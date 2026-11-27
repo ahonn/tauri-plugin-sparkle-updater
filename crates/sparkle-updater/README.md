@@ -1,6 +1,6 @@
 # sparkle-updater
 
-A macOS-only Rust API for Sparkle 2.9.6. It has no Tauri, GPUI, Tokio, or other application-runtime dependency. The repository's root Tauri plugin is an adapter over this crate.
+A macOS-only Rust API for Sparkle 2.10.1. It has no Tauri, GPUI, Tokio, or other application-runtime dependency. The repository's root Tauri plugin is an adapter over this crate.
 
 ## Build and bundle
 

@@ -26,9 +26,9 @@ Native objects stay on the main thread. The adapter passes registry IDs between 
 
 ## Requirements
 
-- macOS 10.13+ (the pinned Sparkle framework minimum; the host may require a newer version)
+- macOS 12.0+ (the pinned Sparkle framework minimum; the host may require a newer version)
 - Tauri 2.x
-- Sparkle framework 2.9.6
+- Sparkle framework 2.10.1
 
 ## Quick Start
 
