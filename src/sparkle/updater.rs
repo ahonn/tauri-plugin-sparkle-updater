@@ -274,6 +274,27 @@ impl<R: Runtime> SparkleUpdater<R> {
     ) -> Result<()> {
         self.dispatch(move |updater| updater.set_download_request_headers(headers))
     }
+
+    pub fn handles_install_on_quit(&self) -> Result<bool> {
+        self.dispatch(move |updater| updater.handles_install_on_quit())
+    }
+
+    /// Takes control of updates staged for install on quit. Set this during app
+    /// setup so it applies to the first update Sparkle stages. See
+    /// [`sparkle_updater::SparkleUpdater::set_handles_install_on_quit`].
+    pub fn set_handles_install_on_quit(&self, enabled: bool) -> Result<()> {
+        self.dispatch(move |updater| updater.set_handles_install_on_quit(enabled))
+    }
+
+    pub fn pending_install_on_quit(&self) -> Result<Option<UpdateInfo>> {
+        self.dispatch(move |updater| updater.pending_install_on_quit())
+    }
+
+    /// Installs the staged update now and relaunches the app. Returns `false`
+    /// when no update is staged for the host.
+    pub fn install_pending_update(&self) -> Result<bool> {
+        self.dispatch(move |updater| updater.install_pending_update())
+    }
 }
 
 impl<R: Runtime> Drop for SparkleUpdater<R> {

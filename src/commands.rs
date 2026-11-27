@@ -290,3 +290,28 @@ pub(crate) async fn set_download_request_headers<R: Runtime>(
 pub(crate) async fn last_found_update<R: Runtime>(app: AppHandle<R>) -> Result<Option<UpdateInfo>> {
     get_updater!(app).last_found_update()
 }
+
+#[command]
+pub(crate) async fn handles_install_on_quit<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).handles_install_on_quit()
+}
+
+#[command]
+pub(crate) async fn set_handles_install_on_quit<R: Runtime>(
+    app: AppHandle<R>,
+    enabled: bool,
+) -> Result<()> {
+    get_updater!(app).set_handles_install_on_quit(enabled)
+}
+
+#[command]
+pub(crate) async fn pending_install_on_quit<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<UpdateInfo>> {
+    get_updater!(app).pending_install_on_quit()
+}
+
+#[command]
+pub(crate) async fn install_pending_update<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    get_updater!(app).install_pending_update()
+}

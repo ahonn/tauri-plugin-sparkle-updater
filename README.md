@@ -134,6 +134,28 @@ await onDidFindValidUpdate((info) => {
 });
 ```
 
+### Apps that seldom quit
+
+Sparkle installs an automatically downloaded update on quit. If the app stays open, Sparkle presents that staged update after one week without a new appcast check, even if a newer release has shipped. To install the staged update at a time the app selects:
+
+```rust
+use tauri_plugin_sparkle_updater::SparkleUpdaterExt;
+
+// During setup, before Sparkle stages an update.
+if let Some(updater) = app.sparkle_updater() {
+    updater.set_handles_install_on_quit(true)?;
+}
+
+// Later, for example when the app is idle.
+if let Some(updater) = app.sparkle_updater() {
+    if updater.pending_install_on_quit()?.is_some() {
+        updater.install_pending_update()?; // Installs and relaunches without UI.
+    }
+}
+```
+
+While an update is staged for the host, Sparkle does not check for updates. The TypeScript API has the same functions: `setHandlesInstallOnQuit`, `pendingInstallOnQuit`, and `installPendingUpdate`.
+
 ## Documentation
 
 - [API Reference (docs.rs)](https://docs.rs/tauri-plugin-sparkle-updater) - Rust API documentation

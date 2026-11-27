@@ -47,6 +47,10 @@ Default permissions for the Sparkle updater plugin
 - `allow-download-request-headers`
 - `allow-set-download-request-headers`
 - `allow-last-found-update`
+- `allow-handles-install-on-quit`
+- `allow-set-handles-install-on-quit`
+- `allow-pending-install-on-quit`
+- `allow-install-pending-update`
 
 ## Permission Table
 
@@ -424,6 +428,32 @@ Denies the feed_url_override command without any pre-configured scope.
 <tr>
 <td>
 
+`sparkle-updater:allow-handles-install-on-quit`
+
+</td>
+<td>
+
+Enables the handles_install_on_quit command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-handles-install-on-quit`
+
+</td>
+<td>
+
+Denies the handles_install_on_quit command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `sparkle-updater:allow-http-headers`
 
 </td>
@@ -443,6 +473,32 @@ Enables the http_headers command without any pre-configured scope.
 <td>
 
 Denies the http_headers command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:allow-install-pending-update`
+
+</td>
+<td>
+
+Enables the install_pending_update command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-install-pending-update`
+
+</td>
+<td>
+
+Denies the install_pending_update command without any pre-configured scope.
 
 </td>
 </tr>
@@ -521,6 +577,32 @@ Enables the may_check_for_updates_config command without any pre-configured scop
 <td>
 
 Denies the may_check_for_updates_config command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:allow-pending-install-on-quit`
+
+</td>
+<td>
+
+Enables the pending_install_on_quit command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-pending-install-on-quit`
+
+</td>
+<td>
+
+Denies the pending_install_on_quit command without any pre-configured scope.
 
 </td>
 </tr>
@@ -859,6 +941,32 @@ Enables the set_feed_url_override command without any pre-configured scope.
 <td>
 
 Denies the set_feed_url_override command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:allow-set-handles-install-on-quit`
+
+</td>
+<td>
+
+Enables the set_handles_install_on_quit command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sparkle-updater:deny-set-handles-install-on-quit`
+
+</td>
+<td>
+
+Denies the set_handles_install_on_quit command without any pre-configured scope.
 
 </td>
 </tr>

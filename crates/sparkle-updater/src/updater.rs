@@ -40,6 +40,9 @@ pub struct UpdaterConfig {
     pub event_callback: Option<EventCallback>,
     pub relaunch_handler: Option<RelaunchHandler>,
     pub gentle_reminders: Option<Rc<dyn GentleReminders>>,
+    /// Take control of updates Sparkle downloads automatically and stages for
+    /// install on quit. See [`SparkleUpdater::set_handles_install_on_quit`].
+    pub handles_install_on_quit: bool,
 }
 
 /// Starts Sparkle with an optional event listener. Returns `None` outside an app bundle.
@@ -71,6 +74,7 @@ fn initialize(mtm: MainThreadMarker, config: UpdaterConfig) -> Result<Option<Spa
     delegate.set_event_callback(config.event_callback);
     delegate.set_relaunch_handler(config.relaunch_handler);
     delegate.set_gentle_reminders(config.gentle_reminders);
+    delegate.set_handles_install_on_quit(config.handles_install_on_quit);
 
     let controller = unsafe {
         let alloc: objc2::rc::Allocated<SPUStandardUpdaterController> =
@@ -428,5 +432,42 @@ impl SparkleUpdater {
     ) -> Result<()> {
         self.with_delegate(|d| d.set_download_request_headers(headers));
         Ok(())
+    }
+
+    pub fn handles_install_on_quit(&self) -> Result<bool> {
+        Ok(self.with_delegate(|d| d.handles_install_on_quit()))
+    }
+
+    /// Takes control of updates that Sparkle downloads automatically and stages
+    /// for install on quit. Off by default.
+    ///
+    /// When off, Sparkle keeps its update cycle running. An app that is seldom
+    /// quit then sees the staged update presented after
+    /// `SUScheduledImpatientCheckInterval`, without a new appcast check, even
+    /// if a newer release has shipped since.
+    ///
+    /// When on, Sparkle stops checking for updates once an update is staged.
+    /// The host must call [`Self::install_pending_update`] at a suitable time,
+    /// for example when the app is idle. Sparkle still installs the staged
+    /// update when the app terminates. The setting applies to updates staged
+    /// after the change.
+    pub fn set_handles_install_on_quit(&self, enabled: bool) -> Result<()> {
+        self.with_delegate(|d| d.set_handles_install_on_quit(enabled));
+        Ok(())
+    }
+
+    /// The update staged for install on quit while
+    /// [`Self::set_handles_install_on_quit`] was on, if any.
+    pub fn pending_install_on_quit(&self) -> Result<Option<UpdateInfo>> {
+        Ok(self.with_delegate(|d| d.pending_install()))
+    }
+
+    /// Installs the staged update now and relaunches the app without UI.
+    ///
+    /// Returns `false` when no update is staged for the host. Sparkle performs
+    /// the installation asynchronously on the main thread, and terminates the
+    /// app as part of it.
+    pub fn install_pending_update(&self) -> Result<bool> {
+        Ok(self.with_delegate(|d| d.install_pending_update()))
     }
 }
