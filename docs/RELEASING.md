@@ -28,4 +28,24 @@ Release-plz publishes eligible Rust crates in dependency order and creates each 
 
 If npm publication fails after the Rust crates succeed, rerun the failed jobs or the original workflow run for the same commit. Eligibility is based on the merged release PR, not on whether Rust published something during that attempt. A manual dispatch on a later feature commit cannot publish the release retroactively.
 
-Required secrets are `CARGO_REGISTRY_TOKEN` (including permission to publish new crates when needed) and `NPM_TOKEN`. Published versions are never overwritten; corrections require a new version prepared through another release PR.
+Published versions are never overwritten. Corrections require a new version prepared through another release PR.
+
+## Registry credentials
+
+The Release workflow uses trusted publishing (OIDC) for crates.io and npm. The repository stores no registry token. Each publishing job requests `id-token: write`, and the registry exchanges the GitHub OIDC token for a short-lived publish token. npm also attaches a provenance attestation.
+
+Each registry must trust this workflow. Configure the trusted publisher with these values:
+
+| Field | Value |
+| --- | --- |
+| Owner | `ahonn` |
+| Repository | `tauri-plugin-sparkle-updater` |
+| Workflow filename | `release.yml` |
+| Environment | None |
+
+- crates.io: add the publisher in the settings of each crate: `sparkle-updater` and `tauri-plugin-sparkle-updater`.
+- npm: add the publisher in the settings of `tauri-plugin-sparkle-updater-api`. Allow `npm publish`.
+
+If you rename `release.yml`, update the trusted publisher on each registry before the next release.
+
+Trusted publishing cannot create a package. Publish a new crate or npm package manually one time, then add its trusted publisher before the next release.

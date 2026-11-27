@@ -42,6 +42,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
+      # crates.io trusted publishing: release-plz exchanges the workflow's
+      # OIDC token for a short-lived publish token.
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -61,7 +64,6 @@ jobs:
           command: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           # release-plz 0.3.164+ runs cargo-semver-checks on a temporary copy
           # of the crate, so build.rs cannot find the framework downloaded
           # into the workspace unless told where it is.
@@ -100,6 +102,11 @@ jobs:
     needs: [release-context, release-plz]
     # Use commit eligibility, not releases_created, so npm can retry after Rust succeeds.
     if: needs.release-context.outputs.release == 'true'
+    permissions:
+      contents: read
+      # npm trusted publishing: npm exchanges the workflow's OIDC token for a
+      # short-lived publish token and attaches provenance.
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -112,9 +119,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Trusted publishing needs npm 11.5.1+, which Node 24 bundles.
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
+          # No dependency cache: a job that can publish must not restore
+          # state that another workflow wrote.
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -127,8 +136,20 @@ jobs:
         if: steps.npm-version.outputs.publish == 'true'
         run: pnpm build
 
+      - name: Check npm supports trusted publishing
+        if: steps.npm-version.outputs.publish == 'true'
+        run: |
+          node -e '
+            const version = process.argv[1];
+            const [major, minor, patch] = version.split(".").map(Number);
+            if (major * 1e6 + minor * 1e3 + patch < 11005001) {
+              console.error("npm " + version + " cannot use trusted publishing. Use 11.5.1 or later.");
+              process.exit(1);
+            }
+          ' "$(npm --version)"
+
+      # npm, not pnpm, performs the OIDC exchange. The package was built
+      # above, so skip prepublishOnly.
       - name: Publish to npm
         if: steps.npm-version.outputs.publish == 'true'
-        run: pnpm publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --ignore-scripts
