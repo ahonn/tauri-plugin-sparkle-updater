@@ -2,7 +2,18 @@
 
 Versions in this file apply to `tauri-plugin-sparkle-updater-api`, independently of the Rust crates.
 
+## 0.4.0
+
+### Added
+
+- `setHandlesInstallOnQuit`, `handlesInstallOnQuit`, `pendingInstallOnQuit`, and `installPendingUpdate`. They let the app install an update that Sparkle staged for install on quit, at a time the app selects. Use with `tauri-plugin-sparkle-updater` 0.4.0 or newer, which includes their command permissions.
+
+This is the first npm release since 0.2.2. It also contains the 0.3.0 changes below.
+
 ## 0.3.0
+
+0.3.0 was not published to npm. Its changes are in 0.4.0.
+
 
 ### Added
 

@@ -5,7 +5,7 @@ resolver = "2"
 
 [package]
 name = "tauri-plugin-sparkle-updater"
-version = "0.3.0"
+version = "0.4.0"
 description = "Tauri plugin for macOS app updates using the Sparkle framework"
 authors = ["ahonn <ahonn95@outlook.com>"]
 license = "MIT"
@@ -30,7 +30,7 @@ log = "0.4"
 serde_json = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-sparkle-updater = { version = "0.1.0", path = "crates/sparkle-updater" }
+sparkle-updater = { version = "0.2.0", path = "crates/sparkle-updater" }
 objc2 = "0.6"
 dispatch = "0.2"
 

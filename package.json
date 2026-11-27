@@ -1,6 +1,6 @@
 {
   "name": "tauri-plugin-sparkle-updater-api",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Tauri plugin for macOS app updates using the Sparkle framework",
   "author": "ahonn <ahonn95@outlook.com>",
   "license": "MIT",

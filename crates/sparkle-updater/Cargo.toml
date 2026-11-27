@@ -1,6 +1,6 @@
 [package]
 name = "sparkle-updater"
-version = "0.1.0"
+version = "0.2.0"
 description = "Main-thread Rust bindings for the macOS Sparkle update framework"
 authors = ["ahonn <ahonn95@outlook.com>"]
 license = "MIT"

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.3.0...v0.4.0) - 2026-11-27
+
+### Added
+
+- let the host install updates staged for install on quit
+
+### Other
+
+- *(deps)* [**breaking**] bump Sparkle framework to 2.10.1
+
 ## [0.3.0](https://github.com/ahonn/tauri-plugin-sparkle-updater/compare/v0.2.9...v0.3.0) - 2026-09-19
 
 ### Added
